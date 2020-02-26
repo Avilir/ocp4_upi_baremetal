@@ -21,11 +21,11 @@ dhcp-range={{ deploy_ip_dhcp_min }},{{ deploy_ip_dhcp_max }}
 dhcp-host={{ bootstrap_mac }},{{ deploy_ip_bootstrap }},bootstrap
 
 {% for h in groups['masters']  %}
-dhcp-host={{ hostvars[h]['deploy_mac'] }},{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0 }} master-{{ loop.index0 }}
+dhcp-host={{ hostvars[h]['deploy_mac'] }},{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0 }},master-{{ loop.index0 }}
 {% endfor %}
 
 {% for h in groups['workers']  %}
-dhcp-host={{ hostvars[h]['deploy_mac'] }},{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0  + master_count|int }} worker-{{ loop.index0 }}
+dhcp-host={{ hostvars[h]['deploy_mac'] }},{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0  + master_count|int }},worker-{{ loop.index0 }}
 {% endfor %}
 
 # tell masters & workers to go get boot files from here
