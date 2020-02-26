@@ -1,0 +1,59 @@
+
+### ocp4-upi-dnsmasq.conf.j2
+# template file to be appended to RPM-provided /etc/dnsmasq.conf
+
+# where to listen
+
+bind-interfaces
+strict-order
+interface={{ deploy_bridge }}
+except-interface=lo
+except-interface={{ public_intf }}
+listen-address={{ deployer_ip }}
+
+# DHCP params
+
+dhcp-no-override
+dhcp-authoritative
+dhcp-lease-max=41
+dhcp-boot=lpxelinux.0
+dhcp-range={{ deploy_ip_dhcp_min }},{{ deploy_ip_dhcp_max }}
+dhcp-host={{ bootstrap_mac }},{{ deploy_ip_bootstrap }},bootstrap
+
+{% for h in groups['masters']  %}
+dhcp-host={{ hostvars[h]['deploy_mac'] }},{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0 }} master-{{ loop.index0 }}
+{% endfor %}
+
+{% for h in groups['workers']  %}
+dhcp-host={{ hostvars[h]['deploy_mac'] }},{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0  + master_count|int }} worker-{{ loop.index0 }}
+{% endfor %}
+
+# tell masters & workers to go get boot files from here
+
+enable-tftp
+tftp-root=/var/lib/tftpboot
+
+# DNS records
+
+expand-hosts
+local=/{{ ocp4_dns_domain_name }}/
+domain={{ ocp4_dns_domain_name }}
+
+address=/api.{{ ocp4_dns_domain_name }}/{{ deployer_ip }}
+address=/api-int.{{ ocp4_dns_domain_name }}/{{ deployer_ip }}
+address=/.apps.{{ ocp4_dns_domain_name }}/{{ deployer_ip }}
+address=/bootstrap.{{ ocp4_dns_domain_name }}/{{ deploy_ip_bootstrap }}
+
+{% for h in groups['masters']  %}
+address=/master-{{ loop.index0 }}.{{ ocp4_dns_domain_name }}/{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0 }}
+address=/etcd-{{ loop.index0 }}.{{ ocp4_dns_domain_name }}/{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0 }}
+srv-host=_etcd-server-ssl._tcp.{{ ocp4_dns_domain_name }},etcd-{{ loop.index0 }}.{{ ocp4_dns_domain_name }}.,2380,0,10
+
+{% endfor %}
+
+{% for h in groups['workers']  %}
+address=/worker-{{ loop.index0 }}.{{ ocp4_dns_domain_name }}/{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0 + master_count|int }}
+address=/etcd-{{ loop.index0 }}.{{ ocp4_dns_domain_name }}/{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0 + master_count|int }}
+
+{% endfor %}
+

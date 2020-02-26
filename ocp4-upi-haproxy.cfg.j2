@@ -1,0 +1,60 @@
+#-----------------
+# OCP4-UPI CONFIG
+#-----------------
+frontend kapi
+    mode             tcp
+    bind             {{ deployer_ip }}:6443
+    default_backend  kapi
+
+frontend mc
+    mode             tcp
+    bind             {{ deployer_ip }}:22623
+    default_backend  mc
+
+frontend https
+    mode             tcp
+    bind             {{ deployer_ip }}:443
+    default_backend  https
+
+frontend http
+    mode             http
+    bind             {{ deployer_ip }}:80
+    default_backend  http
+
+backend kapi
+    mode             tcp
+    balance          roundrobin
+{% for h in groups['masters']  %}
+    server kapi{{ loop.index0 }} {{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0 }}:6443 check
+{% endfor %}
+    server kapi3 {{ deploy_ip_bootstrap }}:6443 check
+
+backend mc
+    mode             tcp
+    balance          roundrobin
+{% for h in groups['masters']  %}
+    server mc{{ loop.index0 }} {{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0 }}:22623 check
+{% endfor %}
+    server mc3 {{ deploy_ip_bootstrap }}:22623 check
+
+backend https
+    mode             tcp
+    balance          roundrobin
+{% for h in groups['masters']  %}
+    server https{{ loop.index0 }} {{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0 }}:443 check
+{% endfor %}
+
+{% for h in groups['workers']  %}
+    server https{{ loop.index0 + master_count|int }} {{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0 + master_count|int }}:443 check
+{% endfor %}
+
+backend http
+    mode             http
+    balance          roundrobin
+{% for h in groups['masters']  %}
+    server http{{ loop.index0 }} {{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0 }}:80 check
+{% endfor %}
+
+{% for h in groups['workers']  %}
+    server http{{ loop.index0 + master_count|int }} {{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0 + master_count|int }}:80 check
+{% endfor %}

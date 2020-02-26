@@ -1,0 +1,658 @@
+---
+
+# you must run discover_macs.yml playbook first when
+# you first get a lab reservation to obtain an inventory
+# file with the MAC addresses of the deployment interface 
+# in them.   You only need to do this once.  Use this output 
+# inventory file to run this playbook.
+
+# you must have password-less ssh access to the deployer host
+
+# set up deployer host
+
+- hosts: deployer
+  remote_user: root
+
+  vars:
+    # shell success exit code
+    ok: 0
+    # worked for Alias, may be different in scale lab
+    webdir: "/var/www/html/ocp4-upi"
+    pxedir: "/var/lib/tftpboot/pxelinux.cfg"
+    ocp4_cluster_name: "test"
+    ocp4_dns_domain_base: "myocp4.com"
+    ocp4_dns_domain_name: "{{ ocp4_cluster_name }}.{{ ocp4_dns_domain_base }}"
+    haproxy_cfg: "/etc/haproxy/haproxy.cfg"
+    dnsmasq_conf: "/etc/dnsmasq.conf"
+    bootstrap_mac: "52:54:00:f9:8e:41"
+    bootstrap_net: "ocp4-upi"
+    bootstrap_vm: "ocp4-upi-bootstrap"
+    deploy_bridge: "baremetal"
+    deploy_ip_1st_3_octets: "192.168.222"
+    # bits that are unchanging in subnet
+    deploy_ip_prefix: 24
+    deploy_subnet: "{{ deploy_ip_1st_3_octets }}.0/{{ deploy_ip_prefix }}"
+    deployer_ip: "{{ deploy_ip_1st_3_octets }}.1"
+    deploy_ip_master_base: 20
+    deploy_ip_dhcp_min: "{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base }}"
+    deploy_ip_dhcp_max: "{{ deploy_ip_1st_3_octets }}.90"
+    deploy_ip_bootstrap: "{{ deploy_ip_1st_3_octets }}.90"
+    master_count: "{{ groups['masters'] | length }}"
+    worker_count: "{{ groups['workers'] | length }}"
+
+  tasks:
+
+  # install RPMS
+
+  - name: see if subscription manager set up
+    shell: "rpm -q virt-install"
+    ignore_errors: true
+    register: subscribed
+
+  # only do this stuff if you have never run on this deployer host before
+ 
+  - name: upgrade to latest RHEL GA
+    block:
+        - debug:
+            msg: "upgrading to latest RHEL GA"
+
+        - name: ensure no lab per-VLAN interfaces defined
+          shell: "bash ~/clean-interfaces.sh --nuke"
+
+        # this step assumes you have already done subscription-manager register
+        
+        - name: attach relevant repos
+          shell: "subscription-manager attach --auto"
+
+        - name: upgrade to new version 
+          yum:
+            update_only: yes
+            state: latest
+            name: '*'
+
+        - name: install virtualization packages
+          yum: 
+            name: '@Virtualization Host'
+
+        - name: install OCP4-related packages
+          yum: 
+            name: "ipmitool,wget,virt-install,jq,python3,podman,httpd,syslinux-tftpboot,haproxy,httpd,virt-install,vim-enhanced,git,tmux,python3-beautifulsoup4"
+
+        - name: ensure changes committed
+          shell: sync
+
+        - name: reboot
+          reboot: 
+            post_reboot_delay: 10
+            pre_reboot_delay: 1
+
+    when: subscribed.rc != ok
+
+
+  # set up TFTP boot config
+
+  - name: see if tftpboot already set up
+    shell: "ls -l {{ pxedir }}/master"
+    ignore_errors: yes
+    register: tftp_exists
+
+  - name: set up tftpboot
+    block:
+
+    - name: check we have deploy_mac defined
+      fail:
+        msg: "deploy_mac not defined for host {{ item }}, should be in inventory file"
+      when: "{{ hostvars[item]['deploy_mac'] is not defined }}"
+      with_items: "{{ groups['masters'] }}"
+
+    - name: make PXE boot directory world-readable
+      file:
+        path: "{{ pxedir }}"
+        state: directory
+        mode: go+rx
+
+    - name: make parent directory world-readable
+      file:
+        path: "{{ pxedir }}/.."
+        state: directory
+        mode: go+rx
+
+    - name: copy boot files into TFTP parent dir
+      shell: 
+        chdir: "{{ pxedir }}"
+        cmd: "cp -v /tftpboot/lpxelinux.0 /tftpboot/ldlinux.c32 ../ && chmod a+rx ../*linux*"
+
+    - name: generate worker boot file
+      template: 
+        src: "pxelinux-cfg-default.j2"
+        dest: "{{ pxedir }}/worker"
+
+    - name: make worker the default boot file since N of them
+      file:
+        state: link
+        force: yes
+        src: "{{ pxedir }}/worker"
+        path: "{{ pxedir }}/default"
+
+    - name: transform worker file into master and bootstrap
+      shell: 
+        chdir: "{{ pxedir }}"
+        cmd: "sed s/worker.ign/{{ item }}.ign/ < worker > {{ item }}"
+      with_items:
+      - master
+      - bootstrap
+
+    - name: softlink bootstrap mac addr to PXE for bootstrap
+      file:
+        state: link
+        force: yes
+        src: "{{ pxedir }}/bootstrap"
+        path: "{{ pxedir }}/01-{{ bootstrap_mac | replace(':','-') }}"
+
+    - name: softlink each master MAC to PXE for master
+      file:
+        state: link
+        force: yes
+        src: "{{ pxedir }}/master"
+        path: "{{ pxedir }}/01-{{ hostvars[item]['deploy_mac'] | replace(':','-') }}"
+      with_items: "{{ groups['masters'] }}"
+    when: tftp_exists.rc != ok
+
+
+  # set up dnsmasq config
+
+  - name: see if dnsmasq.conf already edited
+    shell: "grep -q bootstrap {{ dnsmasq_conf }}"
+    ignore_errors: yes
+    register: dnsmasq_edited
+
+  - name: set up dnsmasq
+    block:
+    - name: save original dnsmasq.conf 
+      shell: "if [ ! {{ dnsmasq_conf }}.orig ] ; then cp {{ dnsmasq_conf }} {{ dnsmasq_conf }}.orig ; fi"
+
+    - name: copy dnsmasq OCP4-specific template
+      template:
+        src: "ocp4-upi-dnsmasq.conf.j2"
+        dest: "/var/tmp/ocp4-upi-dnsmasq.conf"
+        force: yes
+        mode: go+rx
+
+    - name: append it to dnsmasq config
+      shell: "cat /var/tmp/ocp4-upi-dnsmasq.conf >> {{ dnsmasq_conf }}"
+    when: dnsmasq_edited.rc != ok
+
+
+  - name: set up resolv.conf
+    block:
+    - name: add cluster name to resolv.conf search list
+      replace:
+        path: "/etc/resolv.conf"
+        regexp: "(^search alias.bos.scalelab.redhat.com)($)"
+        replace: '\1 {{ ocp4_dns_domain_name }}\2'
+
+    - name: add DNS server IP addr to resolv.conf
+      lineinfile:
+        path: /etc/resolv.conf
+        line: "nameserver {{ deployer_ip }}"
+        insertbefore: "^nameserver.*"
+        state: present
+
+
+  # set up haproxy config
+ 
+  - name: see if haproxy.conf already edited
+    shell: "grep -q :6443 {{ haproxy_cfg }}"
+    ignore_errors: yes
+    register: haproxy_edited
+
+  - name: set up haproxy
+    block:
+    - name: generate haproxy entries for masters and workers
+      template:
+        src: "ocp4-upi-haproxy.cfg.j2"
+        dest: "/var/tmp/ocp4-upi-haproxy.cfg"
+
+    - name: save original haproxy.conf
+      shell: "cp -v {{ haproxy_cfg }} {{ haproxy_cfg }}.orig"
+
+    - name: append to haproxy config
+      shell: "cat /var/tmp/ocp4-upi-haproxy.cfg >> {{ haproxy_cfg }}"
+    when: haproxy_edited.rc != ok
+
+
+  # pull RHCOS and make it available for PXE booters
+
+  - name: see if RHCOS is ready
+    shell: 
+      cmd: "cd {{ webdir }} && ls -lL rhcos-metal-bios.raw.gz rhcos-installer-initramfs.img rhcos-installer-kernel"
+    ignore_errors: yes
+    register: rhcos_downloaded
+
+  - name: setup RHCOS for boot
+    block:
+    - name: configure httpd
+      lineinfile:
+        path: /etc/httpd/conf/httpd.conf
+        firstmatch: yes
+        line: "Listen 81"
+        regexp: "Listen 80"
+
+    - name: create subdir for HTTP-served files
+      file:
+        mode: go+rx
+        path: "{{ webdir }}"
+        state: directory
+
+    - name: clean subdir for RHCOS tarball index
+      file:
+        path: rhcos
+        state: absent
+
+    - name: make new subdir for RHCOS tarball index
+      file:
+        path: rhcos
+        state: directory
+
+    - name: pull index.html from URL
+      shell: 
+        chdir: rhcos
+        cmd: "wget {{ rhcos_url }}"
+
+    - name: install program to parse contents of web URL
+      copy:
+        src: parse_web_dir.py
+        dest: "/usr/local/bin"
+        mode: go+rx
+
+    - name: extract relevant sub-URLs from index.html
+      shell:
+        chdir: rhcos
+        cmd: "parse_web_dir.py index.html rhcos installer-kernel,installer-initramfs,metal"
+      register: suburls
+
+    - name: download just these sub-URLs
+      shell:
+        chdir: "{{ webdir }}"
+        cmd: "wget -nv {{ rhcos_url }}/{{ item }}"
+      with_items: "{{ suburls.stdout_lines }}"
+
+    - name: create kernel softlink
+      shell: 
+        cmd: "ln -sv *installer-kernel* rhcos-installer-kernel"
+        chdir: "{{ webdir }}"
+
+    - name: create initramfs softlink
+      shell: 
+        cmd: "ln -sv *installer-initramfs* rhcos-installer-initramfs.img"
+        chdir: "{{ webdir }}"
+
+    - name: create bios softlink
+      shell: 
+        cmd: "ln -sv *metal* rhcos-metal-bios.raw.gz"
+        chdir: "{{ webdir }}"
+
+    - name: check a softlink
+      shell: 
+        cmd: "ls -lL rhcos-metal-bios.raw.gz"
+        chdir: "{{ webdir }}"
+    when: rhcos_downloaded.rc != ok
+
+
+# set up network interface for deployment
+
+  - name: see if bridge already set up
+    shell: "ip a | grep {{ deploy_bridge }}"
+    ignore_errors: yes
+    register: bridge_exists
+
+  - name: ping host IP
+    shell: "ping -c 2 {{ deployer_ip }}"
+    ignore_errors: yes
+    register: ping_deployer
+
+  - name: set up network bridge
+    block:
+        - name: take down interface
+          shell: "nmcli con down {{ deploy_intf }}"
+          ignore_errors: yes
+
+        - name: delete interface
+          shell: "nmcli con del {{ deploy_intf }}"
+          ignore_errors: yes
+
+        - name: add bridge
+          shell: "nmcli con add type bridge ifname {{ deploy_bridge }} con-name {{ deploy_bridge }} ipv4.method manual ipv4.addr {{ deployer_ip }}/{{ deploy_ip_prefix }} autoconnect yes bridge.stp no"
+
+        - name: add interface as bridge slave
+          shell: "nmcli con add type bridge-slave autoconnect yes con-name {{ deploy_intf }} ifname {{ deploy_intf }} master {{ deploy_bridge }}"
+
+        - name: define bridge
+          shell: "nmcli con reload {{ deploy_intf }}"
+
+        - name: define interface
+          shell: "nmcli con reload {{ deploy_bridge }}"
+
+        - name: bring bridge online
+          shell: "nmcli con up {{ deploy_bridge }}"
+
+        - name: bring interface online
+          shell: "nmcli con up {{ deploy_intf }}"
+    when: bridge_exists.rc != ok or ping_deployer.rc != ok
+
+  # this is necessary to ensure libvirtd doesn't have dnsmasq running
+ 
+  - name: undefine default network
+    shell: "virsh net-destroy default"
+    ignore_errors: yes
+
+  # FIXME: do we need to worry about NetworkManager starting one?
+ 
+  - name: shut down libvirtd (and its dnsmasq)
+    systemd:
+      enabled: yes
+      name: libvirtd
+      state: stopped
+
+  - name: kill any remaining dnsmasq processes are dead
+    shell: "killall dnsmasq"
+    ignore_errors: yes
+
+  - name: configure NAT in iptables
+    shell: "iptables -t nat -A POSTROUTING -s {{ deploy_subnet }} ! -d {{ deploy_subnet }} -o {{ public_intf }} -j MASQUERADE"
+
+  - name: save iptables config
+    shell: "iptables-save > /etc/sysconfig/iptables"
+
+  - name: bring up services
+    systemd:
+      enabled: yes
+      name: "{{ item }}"
+      state: restarted
+    with_items: 
+    - httpd
+    - haproxy
+    - dnsmasq
+
+  - name: wait a few sec...
+    shell: "sleep 2"
+
+  - name: start up libvirtd
+    systemd:
+      enabled: yes
+      name: libvirtd
+      state: started
+
+
+  # install openshift
+
+  - name: see if openshift client and install utilities are installed
+    shell: "which oc && which kubectl && which openshift-install"
+    ignore_errors: yes
+    register: ocp_installed
+
+  - name: install openshift client and installer
+    block:
+    - name: remove any openshift tarballs
+      file: 
+        path: openshift
+        state: absent
+      
+    - name: create a separate directory for openshift tarballs
+      file: 
+        path: openshift
+        state: directory
+      
+    - name: pull the index of the directory
+      shell: 
+        cmd: "wget {{ openshift_release_url }}"
+        chdir: openshift
+
+    - name: install program to parse contents of web URL
+      copy:
+        src: parse_web_dir.py
+        dest: "/usr/local/bin"
+        mode: go+rx
+
+    - name: extract URLs for the tarballs we need in the directory
+      shell:
+        chdir: openshift
+        cmd: "parse_web_dir.py index.html openshift install-linux,client-linux"
+      register: openshift_tarballs
+
+    - name: pull each tarball
+      shell:
+        chdir: openshift
+        cmd: "wget -nv {{ openshift_release_url }}/{{ item }}"
+      with_items: "{{ openshift_tarballs.stdout_lines }}"
+
+    - name: unzip each tarball so it is in PATH
+      shell:
+        chdir: "/usr/local/bin"
+        cmd: "tar zxvf ~/openshift/{{ item }}*tar.gz"
+      with_items: 
+      - openshift-client-linux
+      - openshift-install-linux
+
+    - name: verify everything got unpacked
+      shell: "which {{ item }}"
+      with_items: 
+      - kubectl
+      - oc
+      - openshift-install
+
+    - name: report openshift version installed
+      shell: "openshift-install version"
+
+    when: ocp_installed.rc != ok
+
+
+  # set up openshift install ignition files
+
+  - name: see if ignition files exist
+    shell: "ls -l {{ webdir }}/*.ign"
+    ignore_errors: yes
+    register: ignition
+
+  - name: generate ignition files
+    block:
+    - name: generate ssh keypair on deployer
+      openssh_keypair: 
+        path: ".ssh/id_rsa"
+        type: "rsa"
+
+    - name: get public key from deployer
+      shell: "cat .ssh/id_rsa.pub"
+      register: deployer_public_key
+
+    - name: make this available to template
+      set_fact:
+        ocp4_public_key: "{{ deployer_public_key.stdout_lines[0] }}"
+
+    - name: clear out ignition directory
+      file:
+        state: absent
+        path: ignition
+      
+    - name: create ignition directory
+      file:
+        state: directory
+        path: ignition
+      
+    - name: generate ignition config yaml
+      template:
+        src: ocp4-upi-install-config.yaml.j2
+        dest: ignition/install-config.yaml
+
+    - name: generate manifests
+      shell: "openshift-install create manifests --dir=ignition"
+
+    - name: create ignition files
+      shell: "openshift-install create ignition-configs --dir=ignition"
+
+    - name: make directory in which to disable interfaces
+      file:
+        state: directory
+        path: ignition/lab/etc/sysconfig/network-scripts
+      
+    - name: create disabled interfaces
+      template:
+        src: "interface-disabled.j2"
+        dest: "ignition/lab/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
+        force: yes
+      with_items: "{{ disabled_intfs }}"
+
+    - name: get transpiler
+      git:
+        dest: filetranspiler
+        repo: https://github.com/ashcrow/filetranspiler
+
+    - name: run transpiler to create modified ignition files
+      shell:
+        chdir: "ignition"
+        cmd: "mv -v {{ item }}.ign {{ item }}.ign.orig && python3 ~/filetranspiler/filetranspile --pretty -i {{ item }}.ign.orig -f ./lab -o {{ item }}.ign"
+      with_items:
+      - master
+      - worker
+
+    - name: copy ignition files to where bootstrap masters and workers can get them
+      shell: "cp -vf ignition/*.ign {{ webdir }} && chmod go+r {{ webdir }}/*.ign"
+
+    - name: remember that we have new ignition files
+      set_fact:
+        ignition_files_recreated: yes
+    when: ignition.rc != ok
+
+
+  # once we re-generate ignition files we have to recreate bootstrap VM
+ 
+  - name: see if bootstrap VM is running
+    shell: "virsh dumpxml ocp4-upi-bootstrap | grep -i running"
+    ignore_errors: yes
+    register: bootstrap_started
+
+  - name: bring up bootstrap vm
+    block:
+    - name: generate network XML
+      template:
+        src: "ocp4-upi-net.xml.j2"
+        dest: "/var/tmp/ocp4-upi-net.xml"
+
+    - name: wait a few sec...
+      shell: "sleep 3"
+
+    - name: destroy bootstrap VM
+      shell: "virsh destroy {{ bootstrap_vm }} > /tmp/destroy"
+      ignore_errors: yes
+
+    - name: destroy its network 
+      shell: "virsh net-destroy {{ bootstrap_net }} > /tmp/destroy-net"
+      ignore_errors: yes
+
+    - name: undefine VM
+      shell: "virsh undefine {{ bootstrap_vm }} > /tmp/undefine"
+      ignore_errors: yes
+
+    - name: undefine net
+      shell: "virsh net-undefine {{ bootstrap_net }} > /tmp/undefine-net"
+      ignore_errors: yes
+
+    - name: remove preexisting VM images
+      shell: "rm -fv /var/lib/libvirt/images/ocp4-upi-bootstrap*"
+
+    - name: define VM network
+      shell: "virsh net-define /var/tmp/ocp4-upi-net.xml"
+
+    - name: ensure VM network auto-starts
+      shell: "virsh net-autostart {{ bootstrap_net }}"
+
+    - name: start VM network
+      shell: "virsh net-start {{ bootstrap_net }}"
+
+    - name: wait a few sec...
+      shell: "sleep 3"
+
+    - name: install VM
+      shell: "virt-install -n ocp4-upi-bootstrap --pxe --os-type=Linux --os-variant=rhel8.0 --ram=8192 --vcpus=4 --network network=ocp4-upi,mac={{ bootstrap_mac }} --disk size=120,bus=scsi,sparse=yes --check disk_size=off  --noautoconsole --wait -1"
+ 
+    # this will block until the VM reboots, at which point it should become active
+
+    - name: wait a few sec...
+      shell: "sleep 3"
+
+    - name: inspect VM
+      shell: "virsh dumpxml ocp4-upi-bootstrap"
+
+    when: bootstrap_started.rc != ok or ignition_files_recreated is defined
+
+
+  # we don't actually PXE boot masters & workers, just get ready to
+
+  - name: see if badfish is ready
+    shell: "ls masters.list"
+    ignore_errors: yes
+    register: badfish_ready
+
+  - name: prepare to install masters and workers
+    block:
+
+    # DONT NEED - just run badfish without container - its python
+    #- name: pull badfish container
+    #  shell: "podman pull docker.io/quads/badfish:latest"
+
+    - name: install badfish.sh
+      copy: 
+        src: "badfish.sh"
+        dest: "/usr/local/bin/"
+        mode: go+rx
+
+    - name: install QUADS_TICKET environment variable
+      lineinfile:
+        path: .bashrc
+        state: present
+        line: "export QUADS_TICKET={{ ticket }}"
+
+    - name: clone badfish repo
+      git:
+        dest: badfish
+        repo: https://github.com/redhat-performance/badfish
+        force: yes
+
+    - name: remove director records from idrac_interfaces.yml
+      lineinfile: 
+        path: badfish/config/idrac_interfaces.yml
+        regex: "^director_.*"
+        state: absent
+
+    - name: edit idrac_interfaces.yml director records
+      lineinfile:
+        path: badfish/config/idrac_interfaces.yml
+        state: present
+        line: "{{ item }}"
+      with_items: "{{ boot_order_records }}"
+        
+    - name: delete masters.list and workers.list
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+      - "masters.list"
+      - "workers.list"
+
+    - name: create masters.list and workers.list
+      file:
+        path: "{{ item }}"
+        state: touch
+      with_items:
+      - "masters.list"
+      - "workers.list"
+
+    - name: insert masters' idrac hostnames into masters.list
+      shell: "echo mgmt-{{ item }} >> masters.list"
+      with_items: "{{ groups['masters'] }}"
+  
+    - name: insert workers' idrac hostnames into workers .list, could be empty
+      shell: "echo mgmt-{{ item }} >> workers.list"
+      with_items: "{{ groups['workers'] }}"
+    when: badfish_ready.rc != ok
+

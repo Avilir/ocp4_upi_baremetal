@@ -1,0 +1,87 @@
+---
+# this playbook uses ansible fact-gathering to collect the 
+# MAC addresses that we need to run the deployment
+# the output will be a local inventory file containing the mac addresses
+# that can be used by the deployment playbook.
+#
+# the host and account running this playbook must have
+# password-less ssh access to all masters and workers as well
+# to collect facts needed for the playbook. the labs should automatically
+# install /root/.ssh/authorized_keys to enable this, but if they
+# don't, then use ssh-copy-id command to set this up.
+#
+# the inventory file will not be generated unless
+# deployer host and all masters and workers are accessible
+# This is deliberate so that once CoreOS is installed on 
+# masters and workers, this playbook will not accidentally
+# delete the MAC addresses!
+#
+# collect mac addresses from masters
+
+- hosts: masters
+  remote_user: root
+  gather_subset: network
+  tasks:
+  - name: verify that host contains deployment interface
+    set_fact:
+      deploy_mac: "{{ ansible_facts[deploy_intf]['macaddress'] }}"
+
+
+# collect mac addresses from workers
+
+- hosts: workers
+  remote_user: root
+  gather_subset: network
+  tasks:
+  - name: verify that host contains deployment interface
+    set_fact:
+      deploy_mac: "{{ ansible_facts[deploy_intf]['macaddress'] }}"
+
+
+# set up deployer host
+
+- hosts: deployer
+  remote_user: root
+
+  vars:
+    # this var can be overridden
+    new_inv: inventory_with_macs.yml
+    # shell success exit code
+    ok: 0
+    # worked for Alias, may be different in scale lab
+    master_count: "{{ groups['masters'] | length }}"
+    worker_count: "{{ groups['workers'] | length }}"
+
+  tasks:
+
+  - name: get its mac address
+    set_fact:
+      deploy_mac: "{{ ansible_facts[deploy_intf]['macaddress'] }}"
+
+  - name: generate deployer host group 
+    shell: "echo [deployer] > {{ new_inv }}"
+
+  - name: generate deployer record
+    shell: "echo {{ item }}   deploy_mac={{ hostvars[item]['deploy_mac'] }} >> {{ new_inv }}"
+    with_items: "{{ groups['deployer'] }}"
+
+  - name: generate masters host group
+    shell: "(echo ; echo [masters]) >> {{ new_inv }}"
+
+  - name:  generate record for each master
+    shell: "echo {{ item }}   deploy_mac={{ hostvars[item]['deploy_mac'] }} >> {{ new_inv }}"
+    with_items: "{{ groups['masters'] }}"
+
+  - name: generate workers host group
+    shell: "(echo ; echo [workers]) >> {{ new_inv }}"
+
+  - name:  generate record for each worker
+    shell: "echo {{ item }}   deploy_mac={{ hostvars[item]['deploy_mac'] }} >> {{ new_inv }}"
+    with_items: "{{ groups['workers'] }}"
+
+  - name: fetch inventory file to protect from deployer reinstall
+    fetch:
+      flat: yes
+      src: "{{ new_inv }}"
+      dest: "./"
+

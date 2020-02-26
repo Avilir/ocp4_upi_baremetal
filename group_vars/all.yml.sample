@@ -1,0 +1,34 @@
+# see your reservation ticket number here:
+# Alias: http://wiki.alias.bos.scalelab.redhat.com/assignments/
+# Scale lab: http://wiki.rdu2.scalelab.redhat.com/assignments/
+ticket: 502328
+
+# example for Dell 740xds in Alias
+deploy_intf: ens7f0
+data_intf: ens7f1
+public_intf: eno3
+# worked in Alias once, need to refine for scale lab
+# now that QUADS issue 313 is closed, this may change
+disabled_intfs:
+- eno1
+- eno2
+- eno3
+- eno4
+- ens7f1
+
+# this record's right side must be obtained by using redfish interface to query boot order
+# it will be inserted into idrac_interfaces.yml
+boot_order_records: 
+- "director_740xd_interfaces: HardDisk.List.1-1,NIC.Slot.7-1-1"
+- "director_620_interfaces: HardDisk.List.1-1,NIC.Slot.2-1"
+
+# UPDATE THIS WITH YOUR RHCOS release URL, example:
+rhcos_url: https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/pre-release/latest/
+
+# UPDATE THIS WITH YOUR OpenShift client+install tree
+openshift_release_url: https://mirror.openshift.com/pub/openshift-v4/clients/ocp-dev-preview/4.3.0-0.nightly-2020-02-20-120202/
+
+# OVERRIDE THIS WITH YOUR PULL SECRET USING YOUR ACCOUNT, example:
+# environment variable for example will be more secure than placing in group_vars
+ocp4_pull_secret: '{"auths":{"cloud.openshift.com":{"auth":"b3BlbnNoaWZ0LXJlbGVhc2UtZGV2K2JlbmdsYW5kcmVkaGF0Y29tMWczanB4MzQzZGNhcmYwN250bmx0bXR1bWJ3OkdQTE9aUUw2SlRFQjFERjA4VzJFSVhORklKVlA2UjVTVzhYSkUzMDhWNE0xNVRESzI0Q0JPVUdPV0k5STVDR(E=","email":"bengland@redhat.com"},...}}'
+
