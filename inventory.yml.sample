@@ -1,0 +1,14 @@
+# this playbook illustrates the inventory that you feed to
+# discover_macs.yml playbook, which uses ansible fact gathering
+# to collect the relevant MAC addresses
+
+[deployer]
+e26-h01-740xd.alias.bos.scalelab.redhat.com
+
+[masters]
+e26-h03-740xd.alias.bos.scalelab.redhat.com
+e26-h05-740xd.alias.bos.scalelab.redhat.com
+e26-h07-740xd.alias.bos.scalelab.redhat.com
+
+[workers]
+
