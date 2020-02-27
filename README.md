@@ -2,6 +2,11 @@ This repo contains 2 ansible playbooks for implementing Dustin Black's method fo
 on baremetal machines in the Red Hat (IBM) Perf & Scale Alias lab.   Dustin's document is [at this link](https://docs.google.com/document/d/1hl2qVWyRjqhKT3ZR5Q2xn9Ip1DLShanxQcnp11Zf1tw/edit?ts=5e5462d2#heading=h.f51z993ev25
 ).
 
+# where to run the playbook
+
+You can run it from a host totally outside your cluster, or you can run it from the "deployer" = provisioning host.  If you do the latter, the playbook will be interrupted when it gets to the reboot, which is necessary as part of the upgrade of RHEL.   That's ok, just login after the reboot and restart the playbook, it should skip that set of tasks and move on from there.  It will discover that the block "upgrade to latest RHEL GA" has already been executed.
+
+# discovery phase
 
 The first step happens when you get your lab reservation.  At this time, there is usually a vanilla Linux distro installed on all the machines that you can use to discover information about your cluster using ansible fact-gathering.  You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   For example, construct an input inventory file like this one, call it basic_inv.yml:
 
@@ -37,6 +42,7 @@ ansible-playbook -vv --private-key ~/.ssh/id_rsa_perf -i /tmp/w.yml discover_mac
 
 This should output a file named **inventory_with_macs.yml** by default - it will look the same as your previous inventory but with per-host deploy_mac variable added to each record.   From now on, you use this as your inventory file, not the preceding one.
 
+# deployment phase
 
 At present the playbook relies on subscription manager to get RHEL8 repos that you need.   You need to do just one command on the deployer:
 
