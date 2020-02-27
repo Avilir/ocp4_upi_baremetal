@@ -9,7 +9,11 @@ You can run it from a host totally outside your cluster, or you can run it from 
 # discovery phase
 
 The first step happens when you get your lab reservation.  At this time, 
-we *require that RHEL8/Centos8 be deployed on all your masters and workers* - RHEL7 will not work.  This change can be done with Foreman GUI in Alias, for example.   You want your machines to look like this in Foreman:
+we *require that RHEL8/Centos8 be deployed on all your masters and workers* - RHEL7 will not work.  This change can be done with Foreman GUI in Alias, for example.   Go into each host, use "Operating System" tab, fill it out like this:
+
+![Host Edit Dialog](host-edit.png)
+
+Afterwards, you want your machines to look like this in Foreman:
 
 ![RHEL8 Selected](rhel8.png)
 
