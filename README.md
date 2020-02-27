@@ -8,7 +8,16 @@ You can run it from a host totally outside your cluster, or you can run it from 
 
 # discovery phase
 
-The first step happens when you get your lab reservation.  At this time, we *require that RHEL8/Centos8 be deployed on all your masters and workers* - this can be done with Foreman GUI in Alias, for example.   You can then discover information about your cluster using ansible fact-gathering.  You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   For example, construct an input inventory file like this one, call it basic_inv.yml:
+The first step happens when you get your lab reservation.  At this time, 
+we *require that RHEL8/Centos8 be deployed on all your masters and workers* - RHEL7 will not work.  This change can be done with Foreman GUI in Alias, for example.   You want your machines to look like this in Foreman:
+
+![RHEL8 Selected](rhel8.png)
+
+You then rebuild them using the 'Select Action' button, you should get a dialog box like this one:
+
+![Deploy Dialog](deploy.png)
+
+After the rebuild completes, you can then discover information about your cluster using ansible fact-gathering.  You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   For example, construct an input inventory file like this one, call it basic_inv.yml:
 
 ```
 [deployer]
