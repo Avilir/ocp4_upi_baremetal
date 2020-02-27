@@ -4,13 +4,14 @@ on baremetal machines in the Red Hat (IBM) Perf & Scale Alias lab.   Dustin's do
 
 # restrictions (at this time)
 
-- supports only 1 type of machine in a cluster
-- supports only Alias and maybe Scale Lab
-- supports only baremetal at this time (no clouds)
-- public interface is assumed to be slow
-- it assumes a single private high-speed network interface
+1) supports only 1 type of machine in a cluster
+2) supports only Alias and maybe Scale Lab
+3) supports only baremetal at this time (no clouds)
+4) public interface is assumed to be slow
+5) it assumes a single private high-speed network interface
+6) qinq-0 network configuration (each interface has separate VLAN)
 
-I'm working on lifting first and last restriction.
+I'm working on lifting restrictions 5), then 1)
 
 # where to run the playbook
 
