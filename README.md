@@ -91,8 +91,9 @@ To trigger the start of this process, use the installed **badfish.sh**.  It appl
 
 ```
 badfish.sh masters.list -t director
-badfish.sh masters.list --pxe
 badfish.sh masters.list --check-boot
+<keep doing this until you see "Current boot order is set to: director">
+badfish.sh masters.list --pxe
 badfish.sh masters.list --power-cycle
 ```
 
