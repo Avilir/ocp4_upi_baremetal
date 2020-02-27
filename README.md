@@ -74,3 +74,18 @@ for typ in masters workers ; do badfish.sh $typ.list -t foreman ; done
 ```
 
 to revert the boot order to the original state that the labs expect.
+
+
+# troubleshooting notes
+
+To get a good log of the run so that others can see what happened, try adding this to end of your playbook command:
+
+```
+ansible-playbook ...  2>&1 | tee r.log
+```
+
+This playbook is designed to minimize repeated tasks by checking to see if a group of tasks are necessary or not - this feature is particularly nice when running the playbook from outside red hat (i.e. on your laptop from home).   This is somewhat problematic if the configuration changes and you re-run the playbook.   Look for tasks named "see if…"  and you can force the playbook to re-run those steps in most cases by just deleting some configuration file from the deployer host.  We can add a "force" option to make it skip this optimization later.
+
+The slowest step in the installation procedure is download of RHCOS.  If you have to repetitively download the entire RHCOS directory (pointed to by rhcos_url in group_vars/all.yml), because of multiple sites or lab incarnations , then download to a local directory and then get it from there.   The rest of the playbook takes about 20 min to run, even from a remote laptop.
+
+
