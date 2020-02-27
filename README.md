@@ -18,6 +18,15 @@ e26-h07-740xd.alias.bos.scalelab.redhat.com
 e26-h09-740xd.alias.bos.scalelab.redhat.com
 ```
 
+Then define your cluster parameters by doing:
+
+```
+cd group_vars
+cp all.yml.sample all.yml
+<edit all.yml>
+cd ..
+```
+
 Next, ensure that you have password-less ssh access to all the machines in this inventory, using ssh-copy-id if this has not been set up already.  You may need to clear out ~/.ssh/known_hosts entries for previous incarnations of these hosts.
 
 Now run the first playbook to get an output inventory file with mac addresses filled in.
@@ -28,14 +37,6 @@ ansible-playbook -vv --private-key ~/.ssh/id_rsa_perf -i /tmp/w.yml discover_mac
 
 This should output a file named **inventory_with_macs.yml** by default - it will look the same as your previous inventory but with per-host deploy_mac variable added to each record.   From now on, you use this as your inventory file, not the preceding one.
 
-Then define your cluster parameters by doing:
-
-```
-cd group_vars
-cp all.yml.sample all.yml
-<edit all.yml>
-cd ..
-```
 
 At present the playbook relies on subscription manager to get RHEL8 repos that you need.   You need to do just one command on the deployer:
 
