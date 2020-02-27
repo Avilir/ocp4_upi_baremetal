@@ -2,6 +2,16 @@ This repo contains 2 ansible playbooks for implementing Dustin Black's method fo
 on baremetal machines in the Red Hat (IBM) Perf & Scale Alias lab.   Dustin's document is [at this link](https://docs.google.com/document/d/1hl2qVWyRjqhKT3ZR5Q2xn9Ip1DLShanxQcnp11Zf1tw/edit?ts=5e5462d2#heading=h.f51z993ev25
 ).
 
+# restrictions (at this time)
+
+- supports only 1 type of machine in a cluster
+- supports only Alias and maybe Scale Lab
+- supports only baremetal at this time (no clouds)
+- public interface is assumed to be slow
+- it assumes a single private high-speed network interface
+
+I'm working on lifting first and last restriction.
+
 # where to run the playbook
 
 You can run it from a host totally outside your cluster, or you can run it from the "deployer" = provisioning host.  If you do the latter, the playbook will be interrupted when it gets to the reboot, which is necessary as part of the upgrade of RHEL.   That's ok, just login after the reboot and restart the playbook, it should skip that set of tasks and move on from there.  It will discover that the block "upgrade to latest RHEL GA" has already been executed.
