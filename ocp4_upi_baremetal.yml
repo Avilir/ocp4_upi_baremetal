@@ -76,7 +76,7 @@
 
         - name: install OCP4-related packages
           yum: 
-            name: "ipmitool,wget,virt-install,jq,python3,podman,httpd,syslinux-tftpboot,haproxy,httpd,virt-install,vim-enhanced,git,tmux,python3-beautifulsoup4"
+            name: "ipmitool,wget,virt-install,jq,python3,podman,httpd,syslinux-tftpboot,haproxy,httpd,virt-install,vim-enhanced,git,tmux,python3-beautifulsoup4,ansible"
 
         - name: ensure changes committed
           shell: sync
