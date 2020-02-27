@@ -18,7 +18,6 @@ disabled_intfs:
 - eno2
 - eno3
 - eno4
-- ens7f1
 
 # this record's right side must be obtained by using redfish interface to query boot order
 # it will be inserted into idrac_interfaces.yml
