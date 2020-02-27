@@ -10,6 +10,7 @@ on baremetal machines in the Red Hat (IBM) Perf & Scale Alias lab.   Dustin's do
 4) public interface is assumed to be slow
 5) it assumes a single private high-speed network interface
 6) qinq-0 network configuration (each interface has separate VLAN)
+7) RHEL8/Centos8 - RHEL7 not supported
 
 I'm working on lifting restrictions 5), then 1)
 
@@ -20,7 +21,7 @@ You can run it from a host totally outside your cluster, or you can run it from 
 # discovery phase
 
 The first step happens when you get your lab reservation.  At this time, 
-we *require that RHEL8/Centos8 be deployed on all your masters and workers* - RHEL7 will not work.  This change can be done with Foreman GUI in Alias, for example.   Go into each host, use "Operating System" tab, fill it out like this:
+we *require that RHEL8/Centos8 be installed on your deployer, masters and workers* - RHEL7 will not work.  This change can be done with Foreman GUI in Alias, for example.   Go into each host, use "Operating System" tab, fill it out like this:
 
 ![Host Edit Dialog](host-edit.png)
 
