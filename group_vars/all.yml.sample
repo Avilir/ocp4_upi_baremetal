@@ -28,7 +28,7 @@ rhcos_url: https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/pre-
 # UPDATE THIS WITH YOUR OpenShift client+install tree
 openshift_release_url: https://mirror.openshift.com/pub/openshift-v4/clients/ocp-dev-preview/4.3.0-0.nightly-2020-02-20-120202/
 
-# OVERRIDE THIS WITH YOUR PULL SECRET USING YOUR ACCOUNT, example:
+# REPLACE THIS WITH YOUR PULL SECRET USING YOUR ACCOUNT, example:
 # environment variable for example will be more secure than placing in group_vars
-ocp4_pull_secret: '{"auths":{"cloud.openshift.com":{"auth":"b3BlbnNoaWZ0LXJlbGVhc2UtZGV2K2JlbmdsYW5kcmVkaGF0Y29tMWczanB4MzQzZGNhcmYwN250bmx0bXR1bWJ3OkdQTE9aUUw2SlRFQjFERjA4VzJFSVhORklKVlA2UjVTVzhYSkUzMDhWNE0xNVRESzI0Q0JPVUdPV0k5STVDR(E=","email":"bengland@redhat.com"},...}}'
+ocp4_pull_secret: '{"auths":{"cloud.openshift.com":{"auth":"deadbeef(E=","email":"kilroy@redhat.com"},...}}'
 
