@@ -4,11 +4,15 @@
 ticket: 502328
 
 # example for Dell 740xds in Alias
+# use interface names that RHCOS (CoreOS) 8 will recognize
+# not RHEL7 interface names.  
+# if you are not sure what these are, 
 deploy_intf: ens7f0
 data_intf: ens7f1
 public_intf: eno3
 # worked in Alias once, need to refine for scale lab
 # now that QUADS issue 313 is closed, this may change
+# we want to have all fast NIC ports available to OpenShift
 disabled_intfs:
 - eno1
 - eno2
