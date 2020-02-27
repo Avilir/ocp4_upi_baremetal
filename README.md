@@ -8,11 +8,10 @@ on baremetal machines in the Red Hat (IBM) Perf & Scale Alias lab.   Dustin's do
 2) supports only Alias and maybe Scale Lab
 3) supports only baremetal at this time (no clouds)
 4) public interface is assumed to be slow
-5) it assumes a single private high-speed network interface
-6) qinq-0 network configuration (each interface has separate VLAN)
-7) RHEL8/Centos8 - RHEL7 not supported
+5) qinq-0 network configuration (each interface has separate VLAN)
+6) RHEL8/Centos8 - RHEL7 not supported
 
-I'm working on lifting restrictions 5), then 1)
+I'm working on lifting restriction 1)
 
 # where to run the playbook
 
