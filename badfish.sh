@@ -9,7 +9,7 @@ echo
 export hostlist="`cat $1`"
 shift
 for m in $hostlist ; do
-  cmd="python3 badfish/badfish.py -u quads -p $password -i badfish/config/idrac_interfaces.yml -H "
+  cmd="python3 ~/badfish/badfish.py -u quads -p $password -i ~/badfish/config/idrac_interfaces.yml -H "
   # command line parameters are passed through to badfish
   echo
   echo "for host $m"
