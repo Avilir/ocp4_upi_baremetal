@@ -35,12 +35,12 @@ You then rebuild them using the 'Select Action' button, you should get a dialog 
 pull the playbooks and related files from github with:
 
 ```
-# dnf install -y git
+# dnf install -y git ansible
 # git clone https://github.com/bengland2/ocp4_upi_baremetal
 # cd ocp4_upi_baremetal
 ```
 
-After the RHEL8 rebuild completes, you can then discover information about your cluster using ansible fact-gathering.  You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   For example, construct an input inventory file like this one, call it basic_inv.yml:
+After the RHEL8 rebuild completes, you can then discover information about your cluster using ansible fact-gathering.  You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   For example, construct an input inventory file like this one, call it **basic_inv.yml**:
 
 ```
 [deployer]
@@ -64,12 +64,16 @@ cp all.yml.sample all.yml
 cd ..
 ```
 
-Next, ensure that you have password-less ssh access to all the machines in this inventory, using ssh-copy-id if this has not been set up already.  You may need to clear out ~/.ssh/known_hosts entries for previous incarnations of these hosts.
+Next, ensure that you have password-less ssh access to all the machines in this inventory, using ssh-copy-id if this has not been set up already.  You may need to clear out ~/.ssh/known_hosts entries for previous incarnations of these hosts.  For example:
+
+```
+for h in $(grep scalelab basic_inv.yml) ; do echo $h ;  ssh-copy-id root@$h ; done
+```
 
 Now run the first playbook to get an output inventory file with mac addresses filled in.
 
 ```
-ansible-playbook -vv --private-key ~/.ssh/id_rsa_perf -i /tmp/w.yml discover_macs.yaml
+ansible-playbook -vv --private-key ~/.ssh/id_rsa_perf -i basic_inv.yml discover_macs.yaml
 ```
 
 This should output a file named **inventory_with_macs.yml** by default - it will look the same as your previous inventory but with per-host deploy_mac variable added to each record.   From now on, you use this as your inventory file, not the preceding one.
