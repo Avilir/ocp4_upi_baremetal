@@ -32,7 +32,14 @@ You then rebuild them using the 'Select Action' button, you should get a dialog 
 
 ![Deploy Dialog](deploy.png)
 
-After the rebuild completes, you can then discover information about your cluster using ansible fact-gathering.  You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   For example, construct an input inventory file like this one, call it basic_inv.yml:
+pull the playbooks and related files from github with:
+
+```
+# git clone https://github.com/bengland2/ocp4_upi_baremetal
+# cd ocp4_upi_baremetal
+```
+
+After the RHEL8 rebuild completes, you can then discover information about your cluster using ansible fact-gathering.  You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   For example, construct an input inventory file like this one, call it basic_inv.yml:
 
 ```
 [deployer]
@@ -89,6 +96,7 @@ Dustin's document describes what the playbook should be doing.  This will take a
 To trigger the start of this process, use the installed **badfish.sh**.  It applies commands to a list of hosts in a file.  At present, it only supports the Dell 740xds in the Alias lab, but should work with most Dell machines.    See Dustin's notes about supermicro alternative procedures.   **badfish.sh** depends on the **QUADS_TICKET** environment variable defined in **~/.bashrc**  - you can source it or logout and login again.
 
 ```
+cd
 badfish.sh masters.list -t director
 badfish.sh masters.list --check-boot
 <keep doing this until you see "Current boot order is set to: director">
