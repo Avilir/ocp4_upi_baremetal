@@ -73,7 +73,7 @@ for h in $(grep scalelab basic_inv.yml) ; do echo $h ;  ssh-copy-id root@$h ; do
 Now run the first playbook to get an output inventory file with mac addresses filled in.
 
 ```
-ansible-playbook -vv --private-key ~/.ssh/id_rsa_perf -i basic_inv.yml discover_macs.yaml
+ansible-playbook -vv -i basic_inv.yml discover_macs.yaml
 ```
 
 This should output a file named **inventory_with_macs.yml** by default - it will look the same as your previous inventory but with per-host deploy_mac variable added to each record.   From now on, you use this as your inventory file, not the preceding one.
