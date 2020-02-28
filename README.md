@@ -35,6 +35,7 @@ You then rebuild them using the 'Select Action' button, you should get a dialog 
 pull the playbooks and related files from github with:
 
 ```
+# dnf install -y git
 # git clone https://github.com/bengland2/ocp4_upi_baremetal
 # cd ocp4_upi_baremetal
 ```
