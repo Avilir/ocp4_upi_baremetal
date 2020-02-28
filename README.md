@@ -34,8 +34,10 @@ You then rebuild them using the 'Select Action' button, you should get a dialog 
 
 pull the playbooks and related files from github with:
 
+```
 # git clone https://github.com/bengland2/ocp4_upi_baremetal
 # cd ocp4_upi_baremetal
+```
 
 After the RHEL8 rebuild completes, you can then discover information about your cluster using ansible fact-gathering.  You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   For example, construct an input inventory file like this one, call it basic_inv.yml:
 
