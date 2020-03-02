@@ -3,12 +3,12 @@
 # to collect the relevant MAC addresses
 
 [deployer]
-e26-h01-740xd.alias.bos.scalelab.redhat.com
+e26-h01-740xd.alias.bos.scalelab.redhat.com machine_type=740xd
 
 [masters]
-e26-h03-740xd.alias.bos.scalelab.redhat.com
-e26-h05-740xd.alias.bos.scalelab.redhat.com
-e26-h07-740xd.alias.bos.scalelab.redhat.com
+e26-h03-740xd.alias.bos.scalelab.redhat.com machine_type=740xd
+e26-h05-740xd.alias.bos.scalelab.redhat.com machine_type=740xd
+e26-h07-740xd.alias.bos.scalelab.redhat.com machine_type=740xd
 
 [workers]
 

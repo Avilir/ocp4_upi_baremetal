@@ -1,0 +1,49 @@
+---
+# lab_metadata.yml - 
+# metadata about sets of machines in the scale lab
+# saves the user from having to know all of this when
+# it basically doesn't change.
+#
+# The fields defined in this structure are:
+# - provision_intf - which interface is used for provisioning OpenShift
+# - data_intf - which interface is used for high-speed data transport
+# - public_intf - which interface talks to outside world on provisioning host
+# - disabled_intfs - which interfaces should be disabled by CoreOS
+# - badfish_boot_order - idrac_interfaces.yml record for boot order
+#   (should look like "director_MACHINE_interfaces: BOOT_BLOCK_DEV, PXE_NIC_DEV"
+
+lab_metadata:
+- name: alias
+  machine_types:
+
+  - machine_type: 740xd
+    badfish_boot_order: "director_740xd_interfaces: HardDisk.List.1-1,NIC.Slot.7-1-1"
+    provision_intf: ens7f0
+    public_intf: eno3
+    disabled_intfs:
+    - eno1
+    - eno2
+    - eno3
+    - eno4
+
+
+  # I don't know what 620 or 1029u should look like
+  # These are EXAMPLES
+ 
+- name: scale_lab
+  machine_types:
+
+  - machine_type: 1029u
+    badfish_boot_order: "director_1029u_interfaces: HardDisk.List.1-1,NIC.Slot.2-1-1"
+    provision_intf: ens2f0
+    public_intf: eno2
+    disabled_intfs:
+    - eno1
+  
+  - machine_type: 620
+    badfish_boot_order: "director_620_interfaces: HardDisk.List.1-1,NIC.Slot.1-1-1"
+    provision_intf: ens1f0
+    public_intf: eno1
+    disabled_intfs:
+    - eno1
+

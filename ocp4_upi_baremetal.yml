@@ -12,10 +12,105 @@
 
 - hosts: deployer
   remote_user: root
+  vars:
+    lab_metadata_file: "lab_metadata.yml"
+  tasks:
+  # look up vars using metadata based on lab and machine type
 
+  - name: include metadata
+    include_vars:
+      file: "{{ lab_metadata_file }}"
+
+  - name: extract per_lab_info from lab_infra
+    set_fact: 
+      per_lab_info: "{{ item }}"
+    when: item.name == lab_name
+    with_items: "{{ lab_metadata }}"
+
+  - name: extract machine info from per-host machine type
+    set_fact:
+      machine_info: "{{ item }}"
+    when: item.machine_type == machine_type
+    with_items: "{{ per_lab_info.machine_types }}"
+
+  - name: extract deploy interface
+    set_fact:
+      deploy_intf: "{{ machine_info.provision_intf }}"
+      disabled_intfs: "{{ machine_info.disabled_intfs }}"
+      public_intf: "{{ machine_info.public_intf }}"
+
+
+  # look up metadata for masters
+
+- hosts: masters
+  remote_user: root
+  vars:
+    lab_metadata_file: "lab_metadata.yml"
+  tasks:
+  - name: include metadata
+    include_vars:
+      file: "{{ lab_metadata_file }}"
+
+  - name: extract per_lab_info from lab_infra
+    set_fact: 
+      per_lab_info: "{{ item }}"
+    when: item.name == lab_name
+    with_items: "{{ lab_metadata }}"
+
+  - name: extract machine info from per-host machine type
+    set_fact:
+      machine_info: "{{ item }}"
+    when: item.machine_type == machine_type
+    with_items: "{{ per_lab_info.machine_types }}"
+
+  - name: extract deploy interface, disabled interfaces and boot order
+    set_fact:
+      deploy_intf: "{{ machine_info.provision_intf }}"
+      disabled_intfs: "{{ machine_info.disabled_intfs }}"
+      badfish_boot_order: "{{ machine_info.badfish_boot_order }}"
+
+ 
+  # look up metadata for workers
+
+- hosts: workers
+  remote_user: root
+  vars:
+    lab_metadata_file: "lab_metadata.yml"
+  tasks:
+  - name: include metadata
+    include_vars:
+      file: "{{ lab_metadata_file }}"
+
+  - name: extract per_lab_info from lab_infra
+    set_fact: 
+      per_lab_info: "{{ item }}"
+    when: item.name == lab_name
+    with_items: "{{ lab_metadata }}"
+
+  - name: extract machine info from per-host machine type
+    set_fact:
+      machine_info: "{{ item }}"
+    when: item.machine_type == machine_type
+    with_items: "{{ per_lab_info.machine_types }}"
+
+  - name: extract deploy interface, disabled interfaces and boot order
+    set_fact:
+      deploy_intf: "{{ machine_info.provision_intf }}"
+      disabled_intfs: "{{ machine_info.disabled_intfs }}"
+      badfish_boot_order: "{{ machine_info.badfish_boot_order }}"
+
+
+# all lookups performed, start installing!
+
+- hosts: deployer
+  remote_user: root
   vars:
     # shell success exit code
     ok: 0
+    
+    ipmi_username: "quads"
+    lab_metadata_file: "lab_metadata.yml"
+
     # worked for Alias, may be different in scale lab
     ocp4_cluster_name: "test"
     ocp4_dns_domain_base: "myocp4.com"
@@ -30,6 +125,7 @@
     dhclient_conf: "/etc/dhcp/dhclient.conf"
     webdir: "/var/www/html/ocp4-upi"
     pxedir: "/var/lib/tftpboot/pxelinux.cfg"
+    idrac_interfaces: "~/badfish/config/idrac_interfaces.yml"
 
     # network vars
     bootstrap_mac: "52:54:00:f9:8e:41"
@@ -54,7 +150,7 @@
   tasks:
 
   # install RPMS
-
+ 
   - name: must be RHEL 8.*
     shell: "grep 'release 8' /etc/redhat-release"
 
@@ -232,7 +328,7 @@
     - name: define subnet that we use for time services
       replace:
         path: "{{ chrony_conf }}"
-        regexp: "^#allow.*)"
+        regexp: "^#allow.*"
         replace: "allow {{ deploy_subnet }}"
 
     - name: enable logging
@@ -680,7 +776,7 @@
       lineinfile:
         path: .bashrc
         state: present
-        line: "export QUADS_TICKET={{ ticket }}"
+        line: "export QUADS_TICKET={{ ipmi_password }}"
 
     - name: clone badfish repo
       git:
@@ -690,17 +786,27 @@
 
     - name: remove director records from idrac_interfaces.yml
       lineinfile: 
-        path: badfish/config/idrac_interfaces.yml
+        path: "{{ idrac_interfaces }}"
         regex: "^director_.*"
         state: absent
 
-    - name: edit idrac_interfaces.yml director records
+    - name: append badfish boot order records to idrac_interfaces.yml for each master
       lineinfile:
-        path: badfish/config/idrac_interfaces.yml
+        path: "{{ idrac_interfaces }}"
         state: present
-        line: "{{ item }}"
-      with_items: "{{ boot_order_records }}"
+        line: "{{ hostvars[item].badfish_boot_order }}"
+      with_items: "{{ groups['masters'] }}"
         
+    - name: append badfish boot order records to idrac_interfaces.yml for each worker
+      lineinfile:
+        path: "{{ idrac_interfaces }}"
+        state: present
+        line: "{{ hostvars[item].badfish_boot_order }}"
+      with_items: "{{ groups['workers'] }}"
+
+    - name: filter out duplicate records
+      shell: "sort -u {{ idrac_interfaces }} > /tmp/i.yml && cp -v /tmp/i.yml {{ idrac_interfaces }}"
+
     - name: delete masters.list and workers.list
       file:
         path: "{{ item }}"

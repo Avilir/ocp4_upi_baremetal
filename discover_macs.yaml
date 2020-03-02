@@ -22,7 +22,33 @@
   remote_user: root
   gather_subset: network
   tasks:
-  - name: verify that host contains deployment interface
+  # discover facts about machines in lab
+  # allow user to override, but if variable not defined,
+  # attempt to look up using metadata based on lab and machine type
+
+  - name: include metadata
+    include_vars:
+      file: lab_metadata.yml
+
+  # FIXME: can the next 3 tasks be made into a subroutine?
+ 
+  - name: extract per_lab_info from lab_infra
+    set_fact:
+      per_lab_info: "{{ item }}"
+    when: item.name == lab_name
+    with_items: "{{ lab_metadata }}"
+
+  - name: extract machine info from per-host machine type
+    set_fact:
+      machine_info: "{{ item }}"
+    when: item.machine_type == machine_type
+    with_items: "{{ per_lab_info.machine_types }}"
+
+  - name: extract deploy interface
+    set_fact:
+      deploy_intf: "{{ machine_info.provision_intf }}"
+
+  - name: lookup mac address for deployment interface
     set_fact:
       deploy_mac: "{{ ansible_facts[deploy_intf]['macaddress'] }}"
 
@@ -33,7 +59,24 @@
   remote_user: root
   gather_subset: network
   tasks:
-  - name: verify that host contains deployment interface
+ 
+  - name: extract per_lab_info from lab_infra
+    set_fact:
+      per_lab_info: "{{ item }}"
+    when: item.name == lab_name
+    with_items: "{{ lab_metadata }}"
+
+  - name: extract machine info from per-host machine type
+    set_fact:
+      machine_info: "{{ item }}"
+    when: item.machine_type == machine_type
+    with_items: "{{ per_lab_info.machine_types }}"
+
+  - name: extract deploy interface
+    set_fact:
+      deploy_intf: "{{ machine_info.provision_intf }}"
+
+  - name: get mac address for deployment interface
     set_fact:
       deploy_mac: "{{ ansible_facts[deploy_intf]['macaddress'] }}"
 
@@ -62,21 +105,21 @@
     shell: "echo [deployer] > {{ new_inv }}"
 
   - name: generate deployer record
-    shell: "echo {{ item }}   deploy_mac={{ hostvars[item]['deploy_mac'] }} >> {{ new_inv }}"
+    shell: "echo {{ item }} machine_type={{ hostvars[item]['machine_type'] }} deploy_mac={{ hostvars[item]['deploy_mac'] }} >> {{ new_inv }}"
     with_items: "{{ groups['deployer'] }}"
 
   - name: generate masters host group
     shell: "(echo ; echo [masters]) >> {{ new_inv }}"
 
   - name:  generate record for each master
-    shell: "echo {{ item }}   deploy_mac={{ hostvars[item]['deploy_mac'] }} >> {{ new_inv }}"
+    shell: "echo {{ item }} machine_type={{ hostvars[item]['machine_type'] }} deploy_mac={{ hostvars[item]['deploy_mac'] }} >> {{ new_inv }}"
     with_items: "{{ groups['masters'] }}"
 
   - name: generate workers host group
     shell: "(echo ; echo [workers]) >> {{ new_inv }}"
 
   - name:  generate record for each worker
-    shell: "echo {{ item }}   deploy_mac={{ hostvars[item]['deploy_mac'] }} >> {{ new_inv }}"
+    shell: "echo {{ item }} machine_type={{ hostvars[item]['machine_type'] }} deploy_mac={{ hostvars[item]['deploy_mac'] }} >> {{ new_inv }}"
     with_items: "{{ groups['workers'] }}"
 
   - name: fetch inventory file to protect from deployer reinstall

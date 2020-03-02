@@ -4,14 +4,11 @@ on baremetal machines in the Red Hat (IBM) Perf & Scale Alias lab.   Dustin's do
 
 # restrictions (at this time)
 
-1) supports only 1 type of machine in a cluster
-2) supports only Alias and maybe Scale Lab
-3) supports only baremetal at this time (no clouds)
-4) public interface is assumed to be slow
-5) qinq-0 network configuration (each interface has separate VLAN)
-6) RHEL8/Centos8 - RHEL7 not supported
-
-I'm working on lifting restriction 1)
+1) supports only Alias and maybe Scale Lab
+2) supports only baremetal at this time (no clouds)
+3) public interface is assumed to be slow
+4) qinq-0 network configuration (each interface has separate VLAN)
+5) RHEL8/Centos8 - RHEL7 not supported
 
 # where to run the playbook
 
@@ -44,16 +41,26 @@ After the RHEL8 rebuild completes, you can then discover information about your 
 
 ```
 [deployer]
-e26-h01-740xd.alias.bos.scalelab.redhat.com
+e26-h01-740xd.alias.bos.scalelab.redhat.com machine_type="740xd"
 
 [masters]
-e26-h03-740xd.alias.bos.scalelab.redhat.com
-e26-h05-740xd.alias.bos.scalelab.redhat.com
-e26-h07-740xd.alias.bos.scalelab.redhat.com
+e26-h03-740xd.alias.bos.scalelab.redhat.com machine_type="740xd"
+e26-h05-740xd.alias.bos.scalelab.redhat.com machine_type="740xd"
+e26-h07-740xd.alias.bos.scalelab.redhat.com machine_type="740xd"
 
 [workers]
-e26-h09-740xd.alias.bos.scalelab.redhat.com
+e26-h09-740xd.alias.bos.scalelab.redhat.com machine_type="620"
 ```
+
+The machine type, if you define it, has to be recognizable as one of the types
+in lab_metadata.yml.   This allows you to avoid defining the variables needed by the
+playbook for each machine or machine type.   If you want to override and do it directly,
+set each of the following variables per host:
+
+* deploy_intf - which interface will be used for deployment and openshift mgmt
+* data_intf - which interface will be used for secondary network
+* public_intf - which interface connects to the outside world
+* disabled_intfs - which interfaces should be disabled on masters/workers
 
 Then define your cluster parameters by doing:
 
@@ -94,7 +101,7 @@ Now you set up your deployment with:
 ansible-playbook -i inventory_with_macs.yml ocp4_upi_baremetal.yml
 ```
 
-This playbook can be used whenever a re-install of the deployer host is needed, regardless of what state the masters and workers are in.
+This playbook can be used whenever a re-install of the deployer host is needed, regardless of what state the masters and workers are in, because the mac addresses never change.
 
 Dustin's document describes what the playbook should be doing.  This will take a long while, and may involve the reboot of the deployer host and download of RHCOS and openshift.   When it finishes, you will have a deployer host that is set up to install masters and workers.   We do not actually install the masters and workers in this playbook.   
 

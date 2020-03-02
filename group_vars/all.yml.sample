@@ -1,29 +1,10 @@
-# see your reservation ticket number here:
-# Alias: http://wiki.alias.bos.scalelab.redhat.com/assignments/
-# Scale lab: http://wiki.rdu2.scalelab.redhat.com/assignments/
-ticket: rdu2@502328
+# at present we support 2 labs, alias or scale_lab
+lab_name: "alias"
 
-# example for Dell 740xds in Alias
-# use interface names that RHCOS (CoreOS) 8 will recognize
-# not RHEL7 interface names.  
-# if you are not sure what these are, 
-deploy_intf: ens7f0
-data_intf: ens7f1
-public_intf: eno3
-# worked in Alias once, need to refine for scale lab
-# now that QUADS issue 313 is closed, this may change
-# we want to have all fast NIC ports available to OpenShift
-disabled_intfs:
-- eno1
-- eno2
-- eno3
-- eno4
-
-# this record's right side must be obtained by using redfish interface to query boot order
-# it will be inserted into idrac_interfaces.yml
-boot_order_records: 
-- "director_740xd_interfaces: HardDisk.List.1-1,NIC.Slot.7-1-1"
-- "director_620_interfaces: HardDisk.List.1-1,NIC.Slot.2-1"
+# see your reservation ticket number and IPMI username/password here:
+# Alias: http://wiki.alias.bos.scalelab.redhat.com
+# Scale lab: http://wiki.rdu2.scalelab.redhat.com
+ipmi_password: "rdu2@502328"
 
 # UPDATE THIS WITH YOUR RHCOS release URL, example:
 rhcos_url: https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/pre-release/latest/
