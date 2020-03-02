@@ -17,13 +17,20 @@
     # shell success exit code
     ok: 0
     # worked for Alias, may be different in scale lab
-    webdir: "/var/www/html/ocp4-upi"
-    pxedir: "/var/lib/tftpboot/pxelinux.cfg"
     ocp4_cluster_name: "test"
     ocp4_dns_domain_base: "myocp4.com"
     ocp4_dns_domain_name: "{{ ocp4_cluster_name }}.{{ ocp4_dns_domain_base }}"
+
+    # can be overridden in group_vars/all.yml for scale lab
+    time_server: "clock.bos.redhat.com"
+
+    chrony_conf: "/etc/chrony.conf"
     haproxy_cfg: "/etc/haproxy/haproxy.cfg"
     dnsmasq_conf: "/etc/dnsmasq.conf"
+    webdir: "/var/www/html/ocp4-upi"
+    pxedir: "/var/lib/tftpboot/pxelinux.cfg"
+
+    # network vars
     bootstrap_mac: "52:54:00:f9:8e:41"
     bootstrap_net: "ocp4-upi"
     bootstrap_vm: "ocp4-upi-bootstrap"
@@ -37,6 +44,9 @@
     deploy_ip_dhcp_min: "{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base }}"
     deploy_ip_dhcp_max: "{{ deploy_ip_1st_3_octets }}.90"
     deploy_ip_bootstrap: "{{ deploy_ip_1st_3_octets }}.90"
+
+    # needed for IP address assignment to masters and workers
+    # in dnsmasq.conf
     master_count: "{{ groups['masters'] | length }}"
     worker_count: "{{ groups['workers'] | length }}"
 
@@ -194,6 +204,43 @@
         path: /etc/dhclient.conf
         regexp: "^search"
         replace: "search {{ ocp4_dns_domain_name }}"
+
+  - name: see if timeserver is available
+    shell: "grep -q {{ time_server }} {{ chrony_conf }}"
+    ignore_errors: yes
+    register: chrony_conf
+    
+  - name: make deployer host be timeserver also
+    block:
+    - name: remove default time servers
+      lineinfile:
+        path: "{{ chrony_conf }}"
+        state: absent
+        regexp: "^server "
+
+    - name: add our time server
+      lineinfile:
+        path: "{{ chrony_conf }}"
+        state: present
+        line: "server {{ time_server }}"
+
+    - name: define subnet that we use for time services
+      replace:
+        path: "{{ chrony_conf }}"
+        regexp: "^#allow *"
+        line: "allow {{ deploy_subnet }}"
+
+    - name: enable logging
+      replace:
+        path: "{{ chrony_conf }}"
+        regexp: "#logging"
+        line: "logging"
+
+    # - name: provision chrony config file for masters and workers
+    # TBS
+ 
+    when: chrony_conf.rc != ok
+
 
   - name: set up resolv.conf
     block:
