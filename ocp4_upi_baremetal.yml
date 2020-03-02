@@ -27,6 +27,7 @@
     chrony_conf: "/etc/chrony.conf"
     haproxy_cfg: "/etc/haproxy/haproxy.cfg"
     dnsmasq_conf: "/etc/dnsmasq.conf"
+    dhclient_conf: "/etc/dhcp/dhclient.conf"
     webdir: "/var/www/html/ocp4-upi"
     pxedir: "/var/lib/tftpboot/pxelinux.cfg"
 
@@ -53,6 +54,9 @@
   tasks:
 
   # install RPMS
+
+  - name: must be RHEL 8.*
+    shell: "grep 'release 8' /etc/redhat-release"
 
   - name: see if subscription manager set up
     shell: "rpm -q virt-install"
@@ -192,23 +196,23 @@
       shell: "cat /var/tmp/ocp4-upi-dnsmasq.conf >> {{ dnsmasq_conf }}"
     when: dnsmasq_edited.rc != ok
 
+
   - name: prevent dhclient from re-initing resolv.conf
     block:
     - name: insert our dnsmasq as a name server
       lineinfile:
-        path: /etc/dhclient.conf
-        line: "prepend nameserver {{ deployer_ip }}"
+        path: "{{ dhclient_conf }}"
+        line: "prepend domain-name-servers {{ deployer_ip }};"
 
     - name: add DNS domain name to search list
-      replace:
-        path: /etc/dhclient.conf
-        regexp: "^search"
-        replace: "search {{ ocp4_dns_domain_name }}"
+      lineinfile:
+        path: "{{ dhclient_conf }}"
+        line: 'supercede domain-search "test.myocp4.com", "alias.bos.scalelab.redhat.com";'
 
   - name: see if timeserver is available
     shell: "grep -q {{ time_server }} {{ chrony_conf }}"
     ignore_errors: yes
-    register: chrony_conf
+    register: chrony
     
   - name: make deployer host be timeserver also
     block:
@@ -216,30 +220,30 @@
       lineinfile:
         path: "{{ chrony_conf }}"
         state: absent
-        regexp: "^server "
+        regexp: "^pool"
 
     - name: add our time server
       lineinfile:
         path: "{{ chrony_conf }}"
         state: present
         line: "server {{ time_server }}"
+        insertbefore: BOF
 
     - name: define subnet that we use for time services
       replace:
         path: "{{ chrony_conf }}"
-        regexp: "^#allow *"
-        line: "allow {{ deploy_subnet }}"
+        regexp: "^#allow.*)"
+        replace: "allow {{ deploy_subnet }}"
 
     - name: enable logging
       replace:
         path: "{{ chrony_conf }}"
-        regexp: "#logging"
-        line: "logging"
+        regexp: "#log "
+        replace: "log "
 
-    # - name: provision chrony config file for masters and workers
-    # TBS
- 
-    when: chrony_conf.rc != ok
+    when: chrony.rc != ok
+
+    # TBS: provision chrony config file for masters and workers
 
 
   - name: set up resolv.conf
