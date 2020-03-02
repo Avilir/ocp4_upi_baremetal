@@ -182,6 +182,18 @@
       shell: "cat /var/tmp/ocp4-upi-dnsmasq.conf >> {{ dnsmasq_conf }}"
     when: dnsmasq_edited.rc != ok
 
+  - name: prevent dhclient from re-initing resolv.conf
+    block:
+    - name: insert our dnsmasq as a name server
+      lineinfile:
+        path: /etc/dhclient.conf
+        line: "prepend nameserver {{ deployer_ip }}"
+
+    - name: add DNS domain name to search list
+      replace:
+        path: /etc/dhclient.conf
+        regexp: "^search"
+        replace: "search {{ ocp4_dns_domain_name }}"
 
   - name: set up resolv.conf
     block:
@@ -299,7 +311,7 @@
     when: rhcos_downloaded.rc != ok
 
 
-# set up network interface for deployment
+  # set up network interface for deployment
 
   - name: see if bridge already set up
     shell: "ip a | grep {{ deploy_bridge }}"
@@ -521,6 +533,13 @@
     - name: remember that we have new ignition files
       set_fact:
         ignition_files_recreated: yes
+
+    - name: add KUBECONFIG variable to .bashrc
+      lineinfile:
+        path: .bashrc
+        line: "export KUBECONFIG=~/ignition/auth/kubeconfig"
+        state: present
+
     when: ignition.rc != ok
 
 
@@ -656,3 +675,4 @@
       with_items: "{{ groups['workers'] }}"
     when: badfish_ready.rc != ok
 
+    # SOMEDAY: automate badfish commands to install masters
