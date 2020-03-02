@@ -1,7 +1,7 @@
 # see your reservation ticket number here:
 # Alias: http://wiki.alias.bos.scalelab.redhat.com/assignments/
 # Scale lab: http://wiki.rdu2.scalelab.redhat.com/assignments/
-ticket: 502328
+ticket: rdu2@502328
 
 # example for Dell 740xds in Alias
 # use interface names that RHCOS (CoreOS) 8 will recognize
