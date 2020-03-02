@@ -35,11 +35,12 @@ You then rebuild them using the 'Select Action' button, you should get a dialog 
 pull the playbooks and related files from github with:
 
 ```
+# dnf install -y git ansible
 # git clone https://github.com/bengland2/ocp4_upi_baremetal
 # cd ocp4_upi_baremetal
 ```
 
-After the RHEL8 rebuild completes, you can then discover information about your cluster using ansible fact-gathering.  You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   For example, construct an input inventory file like this one, call it basic_inv.yml:
+After the RHEL8 rebuild completes, you can then discover information about your cluster using ansible fact-gathering.  You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   For example, construct an input inventory file like this one, call it **basic_inv.yml**:
 
 ```
 [deployer]
@@ -63,12 +64,16 @@ cp all.yml.sample all.yml
 cd ..
 ```
 
-Next, ensure that you have password-less ssh access to all the machines in this inventory, using ssh-copy-id if this has not been set up already.  You may need to clear out ~/.ssh/known_hosts entries for previous incarnations of these hosts.
+Next, ensure that you have password-less ssh access to all the machines in this inventory, using ssh-copy-id if this has not been set up already.  You may need to clear out ~/.ssh/known_hosts entries for previous incarnations of these hosts.  For example:
+
+```
+for h in $(grep scalelab basic_inv.yml) ; do echo $h ;  ssh-copy-id root@$h ; done
+```
 
 Now run the first playbook to get an output inventory file with mac addresses filled in.
 
 ```
-ansible-playbook -vv --private-key ~/.ssh/id_rsa_perf -i /tmp/w.yml discover_macs.yaml
+ansible-playbook -vv -i basic_inv.yml discover_macs.yaml
 ```
 
 This should output a file named **inventory_with_macs.yml** by default - it will look the same as your previous inventory but with per-host deploy_mac variable added to each record.   From now on, you use this as your inventory file, not the preceding one.
@@ -93,10 +98,11 @@ This playbook can be used whenever a re-install of the deployer host is needed, 
 
 Dustin's document describes what the playbook should be doing.  This will take a long while, and may involve the reboot of the deployer host and download of RHCOS and openshift.   When it finishes, you will have a deployer host that is set up to install masters and workers.   We do not actually install the masters and workers in this playbook.   
 
-To trigger the start of this process, use the installed **badfish.sh**.  It applies commands to a list of hosts in a file.  At present, it only supports the Dell 740xds in the Alias lab, but should work with most Dell machines.    See Dustin's notes about supermicro alternative procedures.   **badfish.sh** depends on the **QUADS_TICKET** environment variable defined in **~/.bashrc**  - you can source it or logout and login again.
+To trigger the start of this process, use the installed **badfish.sh**.  It applies commands to a list of hosts in a file.  At present, it does not support SuperMicro machines, but should work with most Dell machines (that have Redfish API).    See Dustin's notes about supermicro alternative procedures.   **badfish.sh** depends on the **QUADS_TICKET** environment variable defined in **~/.bashrc**  .
 
 ```
 cd
+source ~/.bashrc
 badfish.sh masters.list -t director
 badfish.sh masters.list --check-boot
 <keep doing this until you see "Current boot order is set to: director">
