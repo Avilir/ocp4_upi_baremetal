@@ -37,7 +37,7 @@ pull the playbooks and related files from github with:
 # cd ocp4_upi_baremetal
 ```
 
-After the RHEL8 rebuild completes, you can then discover information about your cluster using ansible fact-gathering.  You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   For example, construct an input inventory file like this one, call it **basic_inv.yml**:
+After the RHEL8 rebuild completes, you can then discover information about your cluster using ansible fact-gathering.  You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   For example, construct an input inventory file like this one, call it **basic_inv.yml** (you can use **inventory.yml.sample** as an example):
 
 ```
 [deployer]
@@ -65,10 +65,10 @@ cp all.yml.sample all.yml
 cd ..
 ```
 
-Next, ensure that you have password-less ssh access to all the machines in this inventory, using ssh-copy-id if this has not been set up already.  You may need to clear out ~/.ssh/known_hosts entries for previous incarnations of these hosts.  For example:
+Next, ensure that you have password-less ssh access to all the machines in this inventory, using ssh-copy-id if this has not been set up already.  You may need to create a public-private key pair if you haven't already done this, with ssh-keygen.  Then clear out ~/.ssh/known_hosts entries for previous incarnations of these hosts.  For example:
 
 ```
-for h in $(grep scalelab basic_inv.yml) ; do echo $h ;  ssh-copy-id root@$h ; done
+for h in $(grep scalelab basic_inv.yml | awk '{ print $1 }') ; do echo $h ;  ssh-copy-id root@$h ; done
 ```
 
 Now run the first playbook to get an output inventory file with mac addresses filled in.
