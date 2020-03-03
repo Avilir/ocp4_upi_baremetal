@@ -146,6 +146,7 @@ For any tasks which have to be done to the openshift cluster after it is created
 you can run this playbook *from your deployer host*:
 
 ```
+cd
 ansible-playbook -i post_install_inventory.yml post_install.yml
 ```
 
