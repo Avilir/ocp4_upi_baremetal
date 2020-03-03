@@ -27,23 +27,30 @@ lab_metadata:
     - eno4
 
 
-  # I don't know what 620 or 1029u should look like
-  # These are EXAMPLES
+  # here is a *subset* of machine types in scale lab
  
 - name: scale_lab
   machine_types:
-
   - machine_type: 1029u
-    badfish_boot_order: "director_1029u_interfaces: HardDisk.List.1-1,NIC.Slot.2-1-1"
+    badfish_boot_order: "director_1029u_interfaces: HardDisk.List.1-1,NIC.Slot.2-1"
     provision_intf: ens2f0
-    public_intf: eno2
-    disabled_intfs:
-    - eno1
-  
-  - machine_type: 620
-    badfish_boot_order: "director_620_interfaces: HardDisk.List.1-1,NIC.Slot.1-1-1"
-    provision_intf: ens1f0
     public_intf: eno1
     disabled_intfs:
     - eno1
+    - eno2
+    - eno3
+    - eno4
+    - ens1f1
+    - ens2f0
+    - ens2f1
+
+  - machine_type: 620
+    badfish_boot_order: "director_620_interfaces: HardDisk.List.1-1,NIC.Slot.2-3"
+    provision_intf: enp66s0f2
+    public_intf: eno3
+    disabled_intfs:
+    - eno1
+    - eno2
+    - eno3
+    - enp66s0f3
 
