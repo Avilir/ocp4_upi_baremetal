@@ -767,3 +767,14 @@
     when: badfish_ready.rc != ok
 
     # SOMEDAY: automate badfish commands to install masters
+
+  - name: copy post-install playbook files to deployer host
+    copy:
+      src: "{{ item }}"
+      dest: "~/"
+    with_items:
+    - "post_install.yml"
+    - "~/post_install_inventory.yml"
+    - "common_vars.yml"
+    - "group_vars/all.yml"
+
