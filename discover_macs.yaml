@@ -60,6 +60,10 @@
   gather_subset: network
   tasks:
  
+  - name: include metadata
+    include_vars:
+      file: lab_metadata.yml
+
   - name: extract per_lab_info from lab_infra
     set_fact:
       per_lab_info: "{{ item }}"
@@ -96,6 +100,26 @@
     worker_count: "{{ groups['workers'] | length }}"
 
   tasks:
+
+  - name: include metadata
+    include_vars:
+      file: lab_metadata.yml
+
+  - name: extract per_lab_info from lab_infra
+    set_fact:
+      per_lab_info: "{{ item }}"
+    when: item.name == lab_name
+    with_items: "{{ lab_metadata }}"
+
+  - name: extract machine info from per-host machine type
+    set_fact:
+      machine_info: "{{ item }}"
+    when: item.machine_type == machine_type
+    with_items: "{{ per_lab_info.machine_types }}"
+
+  - name: extract deploy interface
+    set_fact:
+      deploy_intf: "{{ machine_info.provision_intf }}"
 
   - name: get its mac address
     set_fact:
