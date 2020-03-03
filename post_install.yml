@@ -1,0 +1,55 @@
+
+- hosts: deployer
+  remote_user: root
+  vars:
+          #chrony_file: /etc/chrony.conf
+          #tmp_chrony: /tmp/chrony.conf
+  tasks:
+        - name: common vars
+          include_vars: 
+            file: common_vars.yml
+
+        - name: make copy of chrony config
+          shell: "cp {{ chrony_conf }} {{ tmp_chrony }}"
+
+        - name: remove server lines from it
+          lineinfile:
+            state: absent
+            path: "{{ tmp_chrony }}"
+            regexp: "^server.*"
+
+        - name: add deployer host as server
+          lineinfile:
+            path: "{{ tmp_chrony }}"
+            insertbefore: BOF
+            line: "server {{ deployer_ip }}"
+            state: present
+
+        - name: pull deployer chrony config
+          fetch:
+            flat: yes
+            src: "{{ tmp_chrony }}"
+            dest: /var/tmp/chrony.conf
+
+
+- hosts: all_openshift
+  remote_user: core
+  tasks:
+        - name: common vars
+          include_vars: 
+            file: common_vars.yml
+
+        - name: copy to master
+          copy:
+                  src: /var/tmp/chrony.conf
+                  dest: "{{ tmp_chrony }}"
+
+        - name: copy to where it belongs
+          shell: "sudo mv -v {{ tmp_chrony }} {{ chrony_conf }}"
+
+        - name: restore SELinux context
+          shell: "sudo restorecon {{ chrony_conf }}"
+
+        - name: restart time service
+          shell: "sudo systemctl restart chronyd"
+
