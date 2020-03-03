@@ -98,25 +98,28 @@ cd ..
 Now run the first playbook to get an output inventory file with mac addresses filled in.
 
 ```
-ansible-playbook -vv -i basic_inv.yml discover_macs.yaml
+ansible-playbook -vv -i inventory.yml discover_macs.yaml
 ```
 
-This should output a file named **inventory_with_macs.yml** by default - it will look the same as your previous inventory but with per-host deploy_mac variable added to each record.   From now on, you use this as your inventory file, not the preceding one.
+This should output a file named **~/inventory_with_macs.yml** by default - it will look the same as your previous inventory but with per-host deploy_mac variable added to each record.   From now on, you use this as your inventory file, not the preceding one.
 
 # deployment phase
 
-At present the playbook relies on subscription manager to get RHEL8 repos that you need.   You need to do just one command on the deployer:
+At present the playbook allows use of subscription-manager to get most up-to-date RHEL8 repos.   However, this is not automated, for security reasons.   The subscription-manager password is your Kerberos password and we don't want that showing up on all the lab systems, which are not secure.    So you have to manually login and turn on subscription manager if you want it.   You need to do just one command on the deployer:
 
 ```
 subscription-manager register
 Username:your-account@redhat.com
 Password:your-password
 ```
+Or you can provide repo files that point to an internal site like this one:
+
+http://download.lab.bos.redhat.com/released/RHEL-8/8.1.0/
 
 Now you set up your deployment with:
 
 ```
-ansible-playbook -i inventory_with_macs.yml ocp4_upi_baremetal.yml
+ansible-playbook -i ~/inventory_with_macs.yml ocp4_upi_baremetal.yml
 ```
 
 This playbook can be used whenever a re-install of the deployer host is needed, regardless of what state the masters and workers are in, because the mac addresses never change.
