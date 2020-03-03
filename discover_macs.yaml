@@ -18,17 +18,34 @@
 #
 # collect mac addresses from masters
 
-- hosts: masters
+- hosts: all
   remote_user: root
   gather_subset: network
   tasks:
+
+  # check that group_vars/all.yml variables are defined
+
+  - name: check all.yml vars are defined
+    fail:
+      msg: "remember to define group_vars/all.yml vars, see all.yml.sample file"
+    when: 
+    - lab_name is not defined
+    - ipmi_password is not defined
+    - rhcos_url is not defined
+    - openshift_release_url is not defined
+    - ocp4_pull_secret is not defined
+
   # discover facts about machines in lab
   # allow user to override, but if variable not defined,
   # attempt to look up using metadata based on lab and machine type
 
+  - name: pull common vars
+    include_vars:
+      file: common_vars.yml
+
   - name: include metadata
     include_vars:
-      file: lab_metadata.yml
+      file: "{{ lab_metadata_file }}"
 
   - name: must be RHEL 8.*
     shell: "grep 'release 8' /etc/redhat-release"
@@ -56,42 +73,8 @@
       deploy_mac: "{{ ansible_facts[deploy_intf]['macaddress'] }}"
 
 
-# collect mac addresses from workers
-
-- hosts: workers
-  remote_user: root
-  gather_subset: network
-  tasks:
- 
-  - name: must be RHEL 8.*
-    shell: "grep 'release 8' /etc/redhat-release"
-
-  - name: include metadata
-    include_vars:
-      file: lab_metadata.yml
-
-  - name: extract per_lab_info from lab_infra
-    set_fact:
-      per_lab_info: "{{ item }}"
-    when: item.name == lab_name
-    with_items: "{{ lab_metadata }}"
-
-  - name: extract machine info from per-host machine type
-    set_fact:
-      machine_info: "{{ item }}"
-    when: item.machine_type == machine_type
-    with_items: "{{ per_lab_info.machine_types }}"
-
-  - name: extract deploy interface
-    set_fact:
-      deploy_intf: "{{ machine_info.provision_intf }}"
-
-  - name: get mac address for deployment interface
-    set_fact:
-      deploy_mac: "{{ ansible_facts[deploy_intf]['macaddress'] }}"
-
-
-# set up deployer host
+# the inventory_with_macs.yml will allow ocp4_upi_baremetal.yml to
+# generate records needed by DHCP to assign IP addresses to MAC addresses
 
 - hosts: deployer
   remote_user: root
@@ -99,65 +82,84 @@
   vars:
     # this var can be overridden
     new_inv: inventory_with_macs.yml
-    # shell success exit code
-    ok: 0
+    post_install_inv: post_install_inventory.yml
+
     # worked for Alias, may be different in scale lab
     master_count: "{{ groups['masters'] | length }}"
     worker_count: "{{ groups['workers'] | length }}"
 
   tasks:
 
-  - name: must be RHEL 8.*
-    shell: "grep 'release 8' /etc/redhat-release"
-
-  - name: include metadata
+  - name: pull common vars
     include_vars:
-      file: lab_metadata.yml
+      file: common_vars.yml
 
-  - name: extract per_lab_info from lab_infra
-    set_fact:
-      per_lab_info: "{{ item }}"
-    when: item.name == lab_name
-    with_items: "{{ lab_metadata }}"
-
-  - name: extract machine info from per-host machine type
-    set_fact:
-      machine_info: "{{ item }}"
-    when: item.machine_type == machine_type
-    with_items: "{{ per_lab_info.machine_types }}"
-
-  - name: extract deploy interface
-    set_fact:
-      deploy_intf: "{{ machine_info.provision_intf }}"
-
-  - name: get its mac address
-    set_fact:
-      deploy_mac: "{{ ansible_facts[deploy_intf]['macaddress'] }}"
-
-  - name: generate deployer host group 
+  - name: define deployer host group 
     shell: "echo [deployer] > {{ new_inv }}"
 
   - name: generate deployer record
     shell: "echo {{ item }} machine_type={{ hostvars[item]['machine_type'] }} deploy_mac={{ hostvars[item]['deploy_mac'] }} >> {{ new_inv }}"
     with_items: "{{ groups['deployer'] }}"
 
-  - name: generate masters host group
+  - name: define masters host group
     shell: "(echo ; echo [masters]) >> {{ new_inv }}"
 
   - name:  generate record for each master
     shell: "echo {{ item }} machine_type={{ hostvars[item]['machine_type'] }} deploy_mac={{ hostvars[item]['deploy_mac'] }} >> {{ new_inv }}"
     with_items: "{{ groups['masters'] }}"
 
-  - name: generate workers host group
+  - name: define workers host group
     shell: "(echo ; echo [workers]) >> {{ new_inv }}"
 
   - name:  generate record for each worker
     shell: "echo {{ item }} machine_type={{ hostvars[item]['machine_type'] }} deploy_mac={{ hostvars[item]['deploy_mac'] }} >> {{ new_inv }}"
     with_items: "{{ groups['workers'] }}"
 
+  - name: define all_openshift group
+    shell: "(echo ; echo [all_openshift:children]; echo masters; echo workers) >> {{ new_inv }}"
+
   - name: fetch inventory file to protect from deployer reinstall
     fetch:
       flat: yes
       src: "{{ new_inv }}"
-      dest: "./"
+      dest: "~/"
+
+
+  # post-install inventory file allows playbooks
+  # to access openshift nodes after they have joined the openshift cluster
+  # mac addresses are no longer needed
+
+  - name: generate post-install inventory file
+    shell: "echo [deployer] > {{ post_install_inv }}"
+
+  - name:  generate record for deployer
+    shell: "echo {{ item }} machine_type={{ hostvars[item]['machine_type'] }} >> {{ post_install_inv }}"
+    with_items: "{{ groups['deployer'] }}"
+
+  - name: define masters group
+    shell: "(echo ; echo [masters]) >> {{ post_install_inv }}"
+
+  - name: generate records for masters group
+    shell: "echo master-{{ master_idx }} machine_type={{ hostvars[item]['machine_type'] }} >> {{ post_install_inv }}"
+    with_items: "{{ groups['masters'] }}"
+    loop_control:
+      index_var: master_idx
+
+  - name: define workers group
+    shell: "(echo ; echo [workers]) >> {{ post_install_inv }}"
+
+  - name: generate records for workers group
+    shell: "echo worker-{{ worker_idx }} machine_type={{ hostvars[item]['machine_type'] }} >> {{ post_install_inv }}"
+    with_items: "{{ groups['workers'] }}"
+    loop_control:
+      index_var: worker_idx
+
+  - name: generate group combining masters and workers together
+    shell: "(echo ; echo [all_openshift:children]; echo masters; echo workers) >> {{ post_install_inv }}"
+
+  - name: fetch inventory file to protect from deployer reinstall
+    fetch:
+      flat: yes
+      src: "{{ post_install_inv }}"
+      dest: "~/"
 
