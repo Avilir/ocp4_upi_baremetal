@@ -1,9 +1,6 @@
 
 - hosts: deployer
   remote_user: root
-  vars:
-          #chrony_file: /etc/chrony.conf
-          #tmp_chrony: /tmp/chrony.conf
   tasks:
         - name: common vars
           include_vars: 
