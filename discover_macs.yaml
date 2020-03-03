@@ -30,6 +30,9 @@
     include_vars:
       file: lab_metadata.yml
 
+  - name: must be RHEL 8.*
+    shell: "grep 'release 8' /etc/redhat-release"
+
   # FIXME: can the next 3 tasks be made into a subroutine?
  
   - name: extract per_lab_info from lab_infra
@@ -60,6 +63,9 @@
   gather_subset: network
   tasks:
  
+  - name: must be RHEL 8.*
+    shell: "grep 'release 8' /etc/redhat-release"
+
   - name: include metadata
     include_vars:
       file: lab_metadata.yml
@@ -100,6 +106,9 @@
     worker_count: "{{ groups['workers'] | length }}"
 
   tasks:
+
+  - name: must be RHEL 8.*
+    shell: "grep 'release 8' /etc/redhat-release"
 
   - name: include metadata
     include_vars:
