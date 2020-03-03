@@ -53,14 +53,8 @@ e26-h09-740xd.alias.bos.scalelab.redhat.com machine_type="620"
 ```
 
 The machine type, if you define it, has to be recognizable as one of the types
-in lab_metadata.yml.   This allows you to avoid defining the variables needed by the
-playbook for each machine or machine type.   If you want to override and do it directly,
-set each of the following variables per host:
-
-* deploy_intf - which interface will be used for deployment and openshift mgmt
-* data_intf - which interface will be used for secondary network
-* public_intf - which interface connects to the outside world
-* disabled_intfs - which interfaces should be disabled on masters/workers
+in **lab_metadata.yml**.   This allows you to avoid defining the variables needed by the
+playbook for each machine or machine type.   
 
 Then define your cluster parameters by doing:
 
