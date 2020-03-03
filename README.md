@@ -140,7 +140,25 @@ badfish.sh masters.list --power-cycle
 
 If all goes well, then the bootstrap VM should install CoreOS and ignition files on all of these machines and they should reboot and join the OpenShift cluster.  Once that has happened, you can then install the workers with the same procedure, substituting workers.list for masters.list.
 
-When you are done with the cluster, or if you want to re-install from scratch, use the next command to revert the boot order to the original state that the QUADS labs expect.   
+# post-installation tasks
+
+For any tasks which have to be done to the openshift cluster after it is created, 
+you can run this playbook *from your deployer host*:
+
+```
+ansible-playbook -i post_install_inventory.yml post_install.yml
+```
+
+This has to be run there because it uses hostnames like "master-0" 
+that aren't defined outside of the cluster.  
+It is leveraging the DNS server (dnsmasq) in the deployer host.
+
+At present this playbook just makes the deployer host a time server for the OpenShift hosts using the deploy_intf network.  Ceph (OpenShift Container Storage) depends on time synchronization.
+
+
+# resetting machines to initial state
+
+When you are done with the cluster, or if you want to re-install from scratch, use the next command to revert the boot order to the original state that the QUADS labs and Foreman expect.   
 
 ```
 for typ in masters workers ; do badfish.sh $typ.list -t foreman ; done
