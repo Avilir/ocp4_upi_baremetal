@@ -10,11 +10,25 @@
 
 # set up deployer host
 
-- hosts: deployer
+- hosts: all
   remote_user: root
-  vars:
-    lab_metadata_file: "lab_metadata.yml"
   tasks:
+  - name: include common vars
+    include_vars:
+      file: common_vars.yml
+
+  # check that group_vars/all.yml variables are defined
+
+  - name: check all.yml vars are defined
+    fail:
+      msg: "bad pronoun, you did not define group_vars/all.yml vars!"
+    when: 
+    - lab_name is not defined
+    - ipmi_password is not defined
+    - rhcos_url is not defined
+    - openshift_release_url is not defined
+    - ocp4_pull_secret is not defined
+
   # look up vars using metadata based on lab and machine type
 
   - name: include metadata
@@ -33,71 +47,14 @@
     when: item.machine_type == machine_type
     with_items: "{{ per_lab_info.machine_types }}"
 
-  - name: extract deploy interface
-    set_fact:
-      deploy_intf: "{{ machine_info.provision_intf }}"
-      disabled_intfs: "{{ machine_info.disabled_intfs }}"
-      public_intf: "{{ machine_info.public_intf }}"
-
-
-  # look up metadata for masters
-
-- hosts: masters
-  remote_user: root
-  vars:
-    lab_metadata_file: "lab_metadata.yml"
-  tasks:
-  - name: include metadata
-    include_vars:
-      file: "{{ lab_metadata_file }}"
-
-  - name: extract per_lab_info from lab_infra
-    set_fact: 
-      per_lab_info: "{{ item }}"
-    when: item.name == lab_name
-    with_items: "{{ lab_metadata }}"
-
-  - name: extract machine info from per-host machine type
-    set_fact:
-      machine_info: "{{ item }}"
-    when: item.machine_type == machine_type
-    with_items: "{{ per_lab_info.machine_types }}"
-
-  - name: extract deploy interface, disabled interfaces and boot order
-    set_fact:
-      deploy_intf: "{{ machine_info.provision_intf }}"
-      disabled_intfs: "{{ machine_info.disabled_intfs }}"
-      badfish_boot_order: "{{ machine_info.badfish_boot_order }}"
-
+  # mac address already comes from discover_macs.yml via inventory_with_macs.yml
  
-  # look up metadata for workers
-
-- hosts: workers
-  remote_user: root
-  vars:
-    lab_metadata_file: "lab_metadata.yml"
-  tasks:
-  - name: include metadata
-    include_vars:
-      file: "{{ lab_metadata_file }}"
-
-  - name: extract per_lab_info from lab_infra
-    set_fact: 
-      per_lab_info: "{{ item }}"
-    when: item.name == lab_name
-    with_items: "{{ lab_metadata }}"
-
-  - name: extract machine info from per-host machine type
-    set_fact:
-      machine_info: "{{ item }}"
-    when: item.machine_type == machine_type
-    with_items: "{{ per_lab_info.machine_types }}"
-
   - name: extract deploy interface, disabled interfaces and boot order
     set_fact:
       deploy_intf: "{{ machine_info.provision_intf }}"
       disabled_intfs: "{{ machine_info.disabled_intfs }}"
       badfish_boot_order: "{{ machine_info.badfish_boot_order }}"
+      public_intf: "{{ machine_info.public_intf }}"
 
 
 # all lookups performed, start installing!
@@ -105,43 +62,6 @@
 - hosts: deployer
   remote_user: root
   vars:
-    # shell success exit code
-    ok: 0
-    
-    ipmi_username: "quads"
-    lab_metadata_file: "lab_metadata.yml"
-
-    # worked for Alias, may be different in scale lab
-    ocp4_cluster_name: "test"
-    ocp4_dns_domain_base: "myocp4.com"
-    ocp4_dns_domain_name: "{{ ocp4_cluster_name }}.{{ ocp4_dns_domain_base }}"
-
-    # can be overridden in group_vars/all.yml for scale lab
-    time_server: "clock.bos.redhat.com"
-
-    chrony_conf: "/etc/chrony.conf"
-    haproxy_cfg: "/etc/haproxy/haproxy.cfg"
-    dnsmasq_conf: "/etc/dnsmasq.conf"
-    dhclient_conf: "/etc/dhcp/dhclient.conf"
-    webdir: "/var/www/html/ocp4-upi"
-    pxedir: "/var/lib/tftpboot/pxelinux.cfg"
-    idrac_interfaces: "~/badfish/config/idrac_interfaces.yml"
-
-    # network vars
-    bootstrap_mac: "52:54:00:f9:8e:41"
-    bootstrap_net: "ocp4-upi"
-    bootstrap_vm: "ocp4-upi-bootstrap"
-    deploy_bridge: "baremetal"
-    deploy_ip_1st_3_octets: "192.168.222"
-    # bits that are unchanging in subnet
-    deploy_ip_prefix: 24
-    deploy_subnet: "{{ deploy_ip_1st_3_octets }}.0/{{ deploy_ip_prefix }}"
-    deployer_ip: "{{ deploy_ip_1st_3_octets }}.1"
-    deploy_ip_master_base: 20
-    deploy_ip_dhcp_min: "{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base }}"
-    deploy_ip_dhcp_max: "{{ deploy_ip_1st_3_octets }}.90"
-    deploy_ip_bootstrap: "{{ deploy_ip_1st_3_octets }}.90"
-
     # needed for IP address assignment to masters and workers
     # in dnsmasq.conf
     master_count: "{{ groups['masters'] | length }}"
@@ -151,6 +71,10 @@
 
   # install RPMS
  
+  - name: pull common variables
+    include_vars:
+       file: common_vars.yml
+
   - name: must be RHEL 8.*
     shell: "grep 'release 8' /etc/redhat-release"
 
@@ -169,10 +93,20 @@
         - name: ensure no lab per-VLAN interfaces defined
           shell: "bash ~/clean-interfaces.sh --nuke"
 
-        # this step assumes you have already done subscription-manager register
-        
+        # NOT SECURE
+        #- name: register with subscription manager
+        #  subscription-manager:
+        #    username: "{{ environment.rh_username }}"
+        #    password: "{{ environment.rh_password }}"
+        #    auto_attach: yes
+        #    ignore_errors: yes
+
+        # this will fail if user hasn't done subscription-manager register
+        # but if there are repos in place, that's ok.
+ 
         - name: attach relevant repos
           shell: "subscription-manager attach --auto"
+          ignore_errors: yes
 
         - name: upgrade to new version 
           yum:
@@ -805,7 +739,7 @@
       with_items: "{{ groups['workers'] }}"
 
     - name: filter out duplicate records
-      shell: "sort -u {{ idrac_interfaces }} > /tmp/i.yml && cp -v /tmp/i.yml {{ idrac_interfaces }}"
+      shell: "sort -u {{ idrac_interfaces }} | grep -v '^#' | grep -v -- '---' > /tmp/i.yml && cp -v /tmp/i.yml {{ idrac_interfaces }}"
 
     - name: delete masters.list and workers.list
       file:
