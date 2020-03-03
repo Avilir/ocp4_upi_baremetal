@@ -29,15 +29,27 @@ You then rebuild them using the 'Select Action' button, you should get a dialog 
 
 ![Deploy Dialog](deploy.png)
 
-pull the playbooks and related files from github with:
+After the RHEL8 rebuild completes, you can then discover information about your cluster using ansible fact-gathering.  To get started:
 
 ```
 # dnf install -y git ansible
+```
+First, you need to have your public key installed on all the machines that you'll be using so that password-less ssh is possible (ansible depends on this).   Will Foster's playbook does this:
+
+```
+git clone https://github.com/sadsfae/ansible-sshkeys
+cd ansible-sshkeys
+<edit "hosts" inventory file>
+ansible-playbook -i hosts install/sshkeys.yml -e ansible_ssh_pass=TakeAWildGuess
+cd
+```
+Once that's done:
+```
 # git clone https://github.com/bengland2/ocp4_upi_baremetal
 # cd ocp4_upi_baremetal
 ```
 
-After the RHEL8 rebuild completes, you can then discover information about your cluster using ansible fact-gathering.  You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   For example, construct an input inventory file like this one, call it **basic_inv.yml** (you can use **inventory.yml.sample** as an example):
+You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   For example, construct an input inventory file like this one, call it **basic_inv.yml** (you can use **inventory.yml.sample** as an example):
 
 ```
 [deployer]
