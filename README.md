@@ -9,6 +9,7 @@ on baremetal machines in the Red Hat (IBM) Perf & Scale Alias lab.   Dustin's do
 3) public interface is assumed to be slow
 4) qinq-0 network configuration (each interface has separate VLAN)
 5) RHEL8/Centos8 - RHEL7 not supported
+6) Not sure about SuperMicros (working on that)
 
 # where to run the playbook
 
@@ -34,7 +35,11 @@ After the RHEL8 rebuild completes, you can then discover information about your 
 ```
 # dnf install -y git ansible
 ```
-First, you need to have your public key installed on all the machines that you'll be using so that password-less ssh is possible (ansible depends on this).   Will Foster's playbook does this:
+Next, ensure that you have password-less ssh access to all the machines in your cluster inventory,  so that password-less ssh is possible (ansible depends on this).  
+
+* You may need to create a public-private key pair if you haven't already done this, with ssh-keygen.  
+* If necessary, clear out ~/.ssh/known_hosts entries for previous incarnations of these hosts.  
+* Will Foster's playbook will your public key installed on all the machines that you'll be using:
 
 ```
 git clone https://github.com/sadsfae/ansible-sshkeys
@@ -43,14 +48,19 @@ cd ansible-sshkeys
 ansible-playbook -i hosts install/sshkeys.yml -e ansible_ssh_pass=TakeAWildGuess
 cd
 ```
-Once that's done:
+Once that's done, pull deploy playbooks and configure them:
 ```
 # git clone https://github.com/bengland2/ocp4_upi_baremetal
 # cd ocp4_upi_baremetal
 ```
 
-You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   For example, construct an input inventory file like this one, call it **basic_inv.yml** (you can use **inventory.yml.sample** as an example):
+You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   Construct an input inventory file to define 3 host groups:
 
+* deployer - only one host in this group, it provides services to the entire cluster such as DHCP, HTTP, PXE, DNS, and NTP.
+* masters - usually 3 of them, this provides OpenShift Kubernetes management infrastructure.   If there are no workers, apps can be run on them too
+* workers - can be 0 to ... well we don't know yet.   Usually apps and OCS run here, as well as workload generators.
+
+For example, here's **inventory.yml.sample**:
 ```
 [deployer]
 e26-h01-740xd.alias.bos.scalelab.redhat.com machine_type="740xd"
@@ -64,8 +74,16 @@ e26-h07-740xd.alias.bos.scalelab.redhat.com machine_type="740xd"
 e26-h09-740xd.alias.bos.scalelab.redhat.com machine_type="620"
 ```
 
-The machine type, if you define it, has to be recognizable as one of the types
-in **lab_metadata.yml**.   This allows you to avoid defining the variables needed by the
+The machine type has to be recognizable as one of the types
+in **lab_metadata.yml**.   This metadata file defines properties of each machine type:
+
+* deploy_intf - high-speed NIC port used to deploy OpenShift 
+* public_intf - low-speed NIC port to outside world, disabled on OpenShift machines
+* data_intf - 2nd high-speed NIC port for use by OpenShift apps
+* disabled_intfs - which network interfaces should be disabled on OpenShift machines
+* badfish_boot_order - director record to use for this type of machine
+
+This allows you to avoid defining the variables needed by the
 playbook for each machine or machine type.   
 
 Then define your cluster parameters by doing:
@@ -77,34 +95,31 @@ cp all.yml.sample all.yml
 cd ..
 ```
 
-Next, ensure that you have password-less ssh access to all the machines in this inventory, using ssh-copy-id if this has not been set up already.  You may need to create a public-private key pair if you haven't already done this, with ssh-keygen.  Then clear out ~/.ssh/known_hosts entries for previous incarnations of these hosts.  For example:
-
-```
-for h in $(grep scalelab basic_inv.yml | awk '{ print $1 }') ; do echo $h ;  ssh-copy-id root@$h ; done
-```
-
 Now run the first playbook to get an output inventory file with mac addresses filled in.
 
 ```
-ansible-playbook -vv -i basic_inv.yml discover_macs.yaml
+ansible-playbook -vv -i inventory.yml discover_macs.yaml
 ```
 
-This should output a file named **inventory_with_macs.yml** by default - it will look the same as your previous inventory but with per-host deploy_mac variable added to each record.   From now on, you use this as your inventory file, not the preceding one.
+This should output a file named **~/inventory_with_macs.yml** by default - it will look the same as your previous inventory but with per-host deploy_mac variable added to each record.   From now on, you use this as your inventory file, not the preceding one.
 
 # deployment phase
 
-At present the playbook relies on subscription manager to get RHEL8 repos that you need.   You need to do just one command on the deployer:
+At present the playbook allows use of subscription-manager to get most up-to-date RHEL8 repos.   However, this is not automated, for security reasons.   The subscription-manager password is your Kerberos password and we don't want that showing up on all the lab systems, which are not secure.    So you have to manually login and turn on subscription manager if you want it.   You need to do just one command on the deployer:
 
 ```
 subscription-manager register
 Username:your-account@redhat.com
 Password:your-password
 ```
+Or you can provide repo files that point to an internal site like this one:
+
+http://download.lab.bos.redhat.com/released/RHEL-8/8.1.0/
 
 Now you set up your deployment with:
 
 ```
-ansible-playbook -i inventory_with_macs.yml ocp4_upi_baremetal.yml
+ansible-playbook -i ~/inventory_with_macs.yml ocp4_upi_baremetal.yml
 ```
 
 This playbook can be used whenever a re-install of the deployer host is needed, regardless of what state the masters and workers are in, because the mac addresses never change.
@@ -125,13 +140,14 @@ badfish.sh masters.list --power-cycle
 
 If all goes well, then the bootstrap VM should install CoreOS and ignition files on all of these machines and they should reboot and join the OpenShift cluster.  Once that has happened, you can then install the workers with the same procedure, substituting workers.list for masters.list.
 
-When you are done with the cluster, use
+When you are done with the cluster, or if you want to re-install from scratch, use the next command to revert the boot order to the original state that the QUADS labs expect.   
 
 ```
 for typ in masters workers ; do badfish.sh $typ.list -t foreman ; done
+<keep doing this until you see "Current boot order is set to: foreman">
 ```
 
-to revert the boot order to the original state that the labs expect.
+
 
 
 # troubleshooting notes
@@ -142,7 +158,7 @@ To get a good log of the run so that others can see what happened, try adding th
 ansible-playbook ...  2>&1 | tee r.log
 ```
 
-This playbook is designed to minimize repeated tasks by checking to see if a group of tasks are necessary or not - this feature is particularly nice when running the playbook from outside red hat (i.e. on your laptop from home).   This is somewhat problematic if the configuration changes and you re-run the playbook.   Look for tasks named "see if…"  and you can force the playbook to re-run those steps in most cases by just deleting some configuration file from the deployer host.  We can add a "force" option to make it skip this optimization later.
+This playbook is designed to minimize repeated tasks by checking to see if a group of tasks are necessary or not - this feature is particularly nice when running the playbook from outside red hat (i.e. on your laptop from home).   This is somewhat problematic if the configuration changes and you re-run the playbook.   Look for tasks named "see if…"  and you can force the playbook to re-run those steps in most cases by just deleting some configuration file from the deployer host.  If needed, we can add a "force" option to make it skip this optimization later.
 
 The slowest step in the installation procedure is download of RHCOS.  If you have to repetitively download the entire RHCOS directory (pointed to by rhcos_url in group_vars/all.yml), because of multiple sites or lab incarnations , then download to a local directory and then get it from there.   The rest of the playbook takes about 20 min to run, even from a remote laptop.
 
