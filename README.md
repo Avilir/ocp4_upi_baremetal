@@ -8,8 +8,9 @@ on baremetal machines in the Red Hat (IBM) Perf & Scale Alias lab.   Dustin's do
 2) supports only baremetal at this time (no clouds)
 3) public interface is assumed to be slow
 4) qinq-0 network configuration (each interface has separate VLAN)
-5) RHEL8/Centos8 - RHEL7 not supported
+5) cluster must start out on RHEL8/Centos8 - RHEL7 not supported
 6) Not sure about SuperMicros (working on that)
+7) playbooks must run on Linux (Fedora 31, RHEL8 tested)
 
 # where to run the playbook
 
@@ -45,7 +46,8 @@ Next, ensure that you have password-less ssh access to all the machines in your 
 git clone https://github.com/sadsfae/ansible-sshkeys
 cd ansible-sshkeys
 <edit "hosts" inventory file>
-ansible-playbook -i hosts install/sshkeys.yml -e ansible_ssh_pass=TakeAWildGuess
+ansible-playbook --ssh-common-args '-o StrictHostKeyChecking=no' \
+  -i hosts -e ansible_ssh_pass=TakeAWildGuess install/sshkeys.yml 
 cd
 ```
 Once that's done, pull deploy playbooks and configure them:
