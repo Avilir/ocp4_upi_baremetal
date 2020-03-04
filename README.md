@@ -8,8 +8,9 @@ on baremetal machines in the Red Hat (IBM) Perf & Scale Alias lab.   Dustin's do
 2) supports only baremetal at this time (no clouds)
 3) public interface is assumed to be slow
 4) qinq-0 network configuration (each interface has separate VLAN)
-5) RHEL8/Centos8 - RHEL7 not supported
+5) cluster must start out on RHEL8/Centos8 - RHEL7 not supported
 6) Not sure about SuperMicros (working on that)
+7) playbooks must run on Linux (Fedora 31, RHEL8 tested)
 
 # where to run the playbook
 
