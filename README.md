@@ -45,7 +45,8 @@ Next, ensure that you have password-less ssh access to all the machines in your 
 git clone https://github.com/sadsfae/ansible-sshkeys
 cd ansible-sshkeys
 <edit "hosts" inventory file>
-ansible-playbook -i hosts install/sshkeys.yml -e ansible_ssh_pass=TakeAWildGuess
+ansible-playbook --ssh-common-args '-o StrictHostKeyChecking=no' \
+  -i hosts -e ansible_ssh_pass=TakeAWildGuess install/sshkeys.yml 
 cd
 ```
 Once that's done, pull deploy playbooks and configure them:
