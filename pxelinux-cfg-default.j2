@@ -3,8 +3,5 @@ TIMEOUT 20
 PROMPT 0
 LABEL pxeboot
     KERNEL http://{{ deployer_ip }}:81/ocp4-upi/rhcos-installer-kernel
-    APPEND ip=dhcp rd.neednet=1 initrd=http://{{ deployer_ip }}:81/ocp4-upi/rhcos-installer-initramfs.img console=tty0
-    console=ttyS0 coreos.inst=yes coreos.inst.install_dev=sda coreos.inst.image_url=http://{{ deployer_ip
-    }}:81/ocp4-upi/rhcos-metal-bios.raw.gz coreos.inst.ignition_url=http://{{ deployer_ip }}:81/ocp4-upi/{{
-    item[0] }}.type_{{ item[1] }}.ign
+    APPEND ip=dhcp rd.neednet=1 initrd=http://{{ deployer_ip }}:81/ocp4-upi/rhcos-installer-initramfs.img console=tty0 console=ttyS0 coreos.inst=yes coreos.inst.install_dev=sda coreos.inst.image_url=http://{{ deployer_ip }}:81/ocp4-upi/rhcos-metal-bios.raw.gz coreos.inst.ignition_url=http://{{ deployer_ip }}:81/ocp4-upi/{{ item[0] }}.type_{{ item[1] }}.ign
     SYSAPPEND 2
