@@ -57,6 +57,7 @@
       public_intf: "{{ machine_info.public_intf }}"
 
 
+
 # all lookups performed, start installing!
 
 - hosts: deployer
@@ -69,6 +70,26 @@
 
   tasks:
 
+  # construct list of machine types
+
+  - name: remove machine types tmp file
+    file:
+      state: absent
+      path: "{{ machine_types_by_node }}"
+
+  - name: append machine_type to this file for each host
+    shell: "echo {{ hostvars[item].machine_type }} >> {{ machine_types_by_node }}"
+    with_items: "{{ groups['all_openshift'] }}"
+  
+  - name: sort out duplicates to get machine type list
+    shell: "sort -u {{ machine_types_by_node }}"
+    register: site_machine_types
+
+  - name: list all machine types for this site
+    shell: "echo {{ item }}"
+    with_items: site_machine_types.stdout_lines
+
+
   # install RPMS
  
   - name: pull common variables
@@ -78,10 +99,10 @@
   - name: must be RHEL 8.*
     shell: "grep 'release 8' /etc/redhat-release"
 
-  - name: see if subscription manager set up
+  - name: see if packages are installed
     shell: "rpm -q virt-install"
     ignore_errors: true
-    register: subscribed
+    register: packages_installed
 
   # only do this stuff if you have never run on this deployer host before
  
@@ -130,13 +151,13 @@
             post_reboot_delay: 10
             pre_reboot_delay: 1
 
-    when: subscribed.rc != ok
+    when: packages_installed.rc != ok
 
 
   # set up TFTP boot config
 
   - name: see if tftpboot already set up
-    shell: "ls -l {{ pxedir }}/master"
+    shell: "ls -l {{ pxedir }}/bootstrap"
     ignore_errors: yes
     register: tftp_exists
 
@@ -147,7 +168,7 @@
       fail:
         msg: "deploy_mac not defined for host {{ item }}, should be in inventory file"
       when: "{{ hostvars[item]['deploy_mac'] is not defined }}"
-      with_items: "{{ groups['masters'] }}"
+      with_items: "{{ groups['all_openshift'] }}"
 
     - name: make PXE boot directory world-readable
       file:
@@ -166,42 +187,46 @@
         chdir: "{{ pxedir }}"
         cmd: "cp -v /tftpboot/lpxelinux.0 /tftpboot/ldlinux.c32 ../ && chmod a+rx ../*linux*"
 
-    - name: generate worker boot file
+    - name: generate per-machine-type boot file for masters and workers
       template: 
         src: "pxelinux-cfg-default.j2"
-        dest: "{{ pxedir }}/worker"
+        dest: "{{ pxedir }}/{{ item[0] }}.type_{{ item[1] }}"
+        force: yes
+      loop: "{{ ['masters','workers'] | product(site_machine_types.stdout_lines) | list }}"
 
-    - name: make worker the default boot file since N of them
+    - name: for master, softlink bootstrap mac addr to PXE for machine type and role
       file:
         state: link
         force: yes
-        src: "{{ pxedir }}/worker"
-        path: "{{ pxedir }}/default"
+        src: "{{ pxedir }}/masters.type_{{ hostvars[item]['machine_type'] }}"
+        path: "{{ pxedir }}/01-{{ hostvars[item]['deploy_mac'] | replace(':','-') }}"
+      loop: "{{ groups['masters'] }}"
 
-    - name: transform worker file into master and bootstrap
-      shell: 
-        chdir: "{{ pxedir }}"
-        cmd: "sed s/worker.ign/{{ item }}.ign/ < worker > {{ item }}"
-      with_items:
-      - master
-      - bootstrap
+    - name: for worker, softlink bootstrap mac addr to PXE for machine type and role
+      file:
+        state: link
+        force: yes
+        src: "{{ pxedir }}/workers.type_{{ hostvars[item]['machine_type'] }}"
+        path: "{{ pxedir }}/01-{{ hostvars[item]['deploy_mac'] | replace(':','-') }}"
+      loop: "{{ groups['workers'] }}"
+
+    # treat bootstrap special, there is only 1 of them ever
+    # use machine type "vm", someday that may be a real thing
+ 
+    - name: generate bootstrap VM boot file
+      template:
+        src: "pxelinux-cfg-default.j2"
+        dest: "{{ pxedir }}/bootstrap.type_vm"
+      loop: "{{ ['bootstrap'] | product(['vm']) | list }}"
 
     - name: softlink bootstrap mac addr to PXE for bootstrap
       file:
         state: link
         force: yes
-        src: "{{ pxedir }}/bootstrap"
+        src: "{{ pxedir }}/bootstrap.type_vm"
         path: "{{ pxedir }}/01-{{ bootstrap_mac | replace(':','-') }}"
 
-    - name: softlink each master MAC to PXE for master
-      file:
-        state: link
-        force: yes
-        src: "{{ pxedir }}/master"
-        path: "{{ pxedir }}/01-{{ hostvars[item]['deploy_mac'] | replace(':','-') }}"
-      with_items: "{{ groups['masters'] }}"
     when: tftp_exists.rc != ok
-
 
   # set up dnsmasq config
 
@@ -433,6 +458,7 @@
           shell: "nmcli con up {{ deploy_intf }}"
     when: bridge_exists.rc != ok or ping_deployer.rc != ok
 
+ 
   # this is necessary to ensure libvirtd doesn't have dnsmasq running
  
   - name: undefine default network
@@ -562,6 +588,11 @@
       set_fact:
         ocp4_public_key: "{{ deployer_public_key.stdout_lines[0] }}"
 
+    - name: get transpiler
+      git:
+        dest: filetranspiler
+        repo: https://github.com/ashcrow/filetranspiler
+
     - name: clear out ignition directory
       file:
         state: absent
@@ -583,33 +614,44 @@
     - name: create ignition files
       shell: "openshift-install create ignition-configs --dir=ignition"
 
-    - name: make directory in which to disable interfaces
-      file:
-        state: directory
-        path: ignition/lab/etc/sysconfig/network-scripts
-      
-    - name: create disabled interfaces
-      template:
-        src: "interface-disabled.j2"
-        dest: "ignition/lab/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
-        force: yes
-      with_items: "{{ disabled_intfs }}"
+    - name: install python helper program 
+      copy:
+        src: gen_ign_disabled_intfs.py
+        dest: /usr/local/bin/
+        mode: 0755
 
-    - name: get transpiler
-      git:
-        dest: filetranspiler
-        repo: https://github.com/ashcrow/filetranspiler
+    - name: install lab metadata
+      copy:
+        src: lab_metadata.yml
+        dest: "~/"
+
+    - name: generate per-machine-type disabled interface tree for ignition
+      shell: "gen_ign_disabled_intfs.py ~/lab_metadata.yml ignition {{ lab_name }}"
 
     - name: run transpiler to create modified ignition files
       shell:
         chdir: "ignition"
-        cmd: "mv -v {{ item }}.ign {{ item }}.ign.orig && python3 ~/filetranspiler/filetranspile --pretty -i {{ item }}.ign.orig -f ./lab -o {{ item }}.ign"
+        cmd: "cp -v {{ item[0] }}.ign {{ item[0] }}.ign.orig && python3 ~/filetranspiler/filetranspile --pretty -i {{ item[0] }}.ign.orig -f ./{{ item[1] }} -o {{ item[0] }}s.type_{{ item[1] }}.ign"
+      loop: "{{ ['master','worker'] | product(site_machine_types.stdout_lines) | list }}"
+
+    - name: remove original master.ign and worker.ign
+      file:
+        path: "ignition/{{ item }}.ign"
+        state: absent
       with_items:
       - master
       - worker
 
+    - name: rename bootstrap.ign to bootstrap.type_vm.ign so PXE can find it
+      shell:
+        chdir: ignition
+        cmd: "mv bootstrap.ign bootstrap.type_vm.ign"
+        
     - name: copy ignition files to where bootstrap masters and workers can get them
-      shell: "cp -vf ignition/*.ign {{ webdir }} && chmod go+r {{ webdir }}/*.ign"
+      shell: "cp -vf ignition/*.ign {{ webdir }}"
+
+    - name: ignition files should be world readable
+      shell: "chmod go+r {{ webdir }}/*.ign"
 
     - name: remember that we have new ignition files
       set_fact:
