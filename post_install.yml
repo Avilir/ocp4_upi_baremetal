@@ -28,6 +28,9 @@
             src: "{{ tmp_chrony }}"
             dest: /var/tmp/chrony.conf
 
+        - name: approve worker CSRs
+          shell: "oc get csr -ojson | jq -r '.items[] | select(.status == {} ) | .metadata.name' | xargs oc adm certificate approve"
+
 
 - hosts: all_openshift
   remote_user: core
