@@ -34,7 +34,7 @@ if not lab_machine_types:
 for minfo in lab_machine_types:
   mtype = minfo['machine_type']
   disabled_intfs = minfo['disabled_intfs']
-  relpath = ignition_dir + '/' + mtype + '/' + 'etc/sysconfig/network-scripts'
+  relpath = ignition_dir + '/' + str(mtype) + '/' + 'etc/sysconfig/network-scripts'
   os.makedirs(relpath)
   for i in disabled_intfs:
      with open(os.path.join(relpath, 'ifcfg-%s' % i), 'w') as iff:
