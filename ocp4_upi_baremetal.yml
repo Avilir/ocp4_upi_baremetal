@@ -226,6 +226,9 @@
         src: "{{ pxedir }}/bootstrap.type_vm"
         path: "{{ pxedir }}/01-{{ bootstrap_mac | replace(':','-') }}"
 
+    - name: make SELinux happy
+      shell: "restorecon -r {{ pxedir }}"
+
     when: tftp_exists.rc != ok
 
   # set up dnsmasq config
