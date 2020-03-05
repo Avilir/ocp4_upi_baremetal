@@ -4,13 +4,12 @@ on baremetal machines in the Red Hat (IBM) Perf & Scale Alias lab.   Dustin's do
 
 # restrictions (at this time)
 
-1) supports only Alias and maybe Scale Lab
+1) supports only Alias and Scale Lab
 2) supports only baremetal at this time (no clouds)
 3) public interface is assumed to be slow
 4) qinq-0 network configuration (each interface has separate VLAN)
 5) cluster must start out on RHEL8/Centos8 - RHEL7 not supported
-6) Not sure about SuperMicros (working on that)
-7) playbooks must run on Linux (Fedora 31, RHEL8 tested)
+6) playbooks must run on Linux (Fedora 31, RHEL8 tested)
 
 # where to run the playbook
 
@@ -128,7 +127,7 @@ This playbook can be used whenever a re-install of the deployer host is needed, 
 
 Dustin's document describes what the playbook should be doing.  This will take a long while, and may involve the reboot of the deployer host and download of RHCOS and openshift.   When it finishes, you will have a deployer host that is set up to install masters and workers.   We do not actually install the masters and workers in this playbook.   
 
-To start master and worker installation, from the deployer host use the installed **badfish.sh**.  It applies commands to a list of hosts in a file.  At present, it does not support SuperMicro machines, but should work with most Dell machines (that have Redfish API).    See Dustin's notes about supermicro alternative procedures.   **badfish.sh** depends on the **QUADS_TICKET** environment variable defined in **~/.bashrc**  .
+To start master and worker installation, from the deployer host use the installed **badfish.sh** for Dell machines.  It applies commands to a list of hosts in a file.  At present, it does not support SuperMicro machines, but should work with most Dell machines (that have Redfish API).    See Dustin's notes about supermicro alternative procedures.   **badfish.sh** depends on the **QUADS_TICKET** environment variable defined in **~/.bashrc**  .
 
 ```
 cd
@@ -140,7 +139,13 @@ badfish.sh masters.list --pxe
 badfish.sh masters.list --power-cycle
 ```
 
-If all goes well, then the bootstrap VM should install CoreOS and ignition files on all of these machines and they should reboot and join the OpenShift cluster.  Once that has happened, you can then install the workers with the same procedure, substituting workers.list for masters.list.
+If all goes well, then the CoreOS and ignition files will be pulled onto all of these machines and they should reboot and join the OpenShift cluster.  Once that has happened, you can then install the workers with the same procedure, substituting workers.list for masters.list.
+
+For supermicros, you need to do the following:
+```
+for node in `cat supermicro-workers.list`; do ipmitool -U quads -P $password -H $node chassis bootdev pxe; done
+for node in `cat supermicro-workers.list`; do echo $node; ipmitool -U quads -P $password -H $node chassis power reset; done
+```
 
 # post-installation tasks
 
@@ -157,6 +162,8 @@ that aren't defined outside of the cluster.
 It is leveraging the DNS server (dnsmasq) in the deployer host.
 
 At present this playbook just makes the deployer host a time server for the OpenShift hosts using the deploy_intf network.  Ceph (OpenShift Container Storage) depends on time synchronization.
+
+It also approves CSRs which workers need.  Without this step, workers won't join the OpenShift cluster.
 
 
 # resetting machines to initial state
@@ -182,5 +189,24 @@ ansible-playbook ...  2>&1 | tee r.log
 This playbook is designed to minimize repeated tasks by checking to see if a group of tasks are necessary or not - this feature is particularly nice when running the playbook from outside red hat (i.e. on your laptop from home).   This is somewhat problematic if the configuration changes and you re-run the playbook.   Look for tasks named "see if…"  and you can force the playbook to re-run those steps in most cases by just deleting some configuration file from the deployer host.  If needed, we can add a "force" option to make it skip this optimization later.
 
 The slowest step in the installation procedure is download of RHCOS.  If you have to repetitively download the entire RHCOS directory (pointed to by rhcos_url in group_vars/all.yml), because of multiple sites or lab incarnations , then download to a local directory and then get it from there.   The rest of the playbook takes about 20 min to run, even from a remote laptop.
+
+To see whether masters and workers are pulling files from httpd service on the deployer host:
+
+```
+tail -f /var/log/httpd/*log
+```
+
+To see whether DHCP and TFTP requests are being received by the deployer host:
+
+```
+journalctl -f
+```
+
+To see whether bootstrap node is ready for masters, do the next command -- you want to see it trying to talk to the masters to establish a cluster quorum, it should be getting either node unreachable, connection refused, or invalid cert (master is from previous incarnation of cluster):
+
+```
+ssh core@bootstrap journalctl -f
+```
+
 
 
