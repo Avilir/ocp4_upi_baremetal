@@ -252,7 +252,14 @@
     when: dnsmasq_edited.rc != ok
 
 
-  - name: prevent dhclient from re-initing resolv.conf
+  - name: disable NetworkManager dnsmasq
+    lineinfile:
+      path: /etc/NetworkManager/NetworkManager.conf
+      line: "dns=none"
+      insertafter: '\[main\]'
+
+
+  - name: prevent dhclient from forgetting our resolv.conf
     block:
     - name: insert our dnsmasq as a name server
       lineinfile:
@@ -298,24 +305,8 @@
 
     when: chrony.rc != ok
 
-    # TBS: provision chrony config file for masters and workers
-
-
-  - name: set up resolv.conf
-    block:
-    - name: add cluster name to resolv.conf search list
-      replace:
-        path: "/etc/resolv.conf"
-        regexp: "(^search alias.bos.scalelab.redhat.com)($)"
-        replace: '\1 {{ ocp4_dns_domain_name }}\2'
-
-    - name: add DNS server IP addr to resolv.conf
-      lineinfile:
-        path: /etc/resolv.conf
-        line: "nameserver {{ deployer_ip }}"
-        insertbefore: "^nameserver.*"
-        state: present
-
+    # chrony for masters and workers must be set up post-install
+ 
 
   # set up haproxy config
  
@@ -431,6 +422,15 @@
 
   - name: set up network bridge
     block:
+        - name: ensure NetworkManager started
+          systemd:
+            enabled: no
+            name: NetworkManager
+            state: started
+
+        - name: wait a few sec...
+          shell: "sleep 2"
+
         - name: take down interface
           shell: "nmcli con down {{ deploy_intf }}"
           ignore_errors: yes
@@ -456,26 +456,57 @@
 
         - name: bring interface online
           shell: "nmcli con up {{ deploy_intf }}"
+
+        - name: wait a few sec...
+          shell: "sleep 2"
+
+        - name: ping host IP
+          shell: "ping -c 2 {{ deployer_ip }}"
+
+        - name: stop NetworkManager 
+          systemd:
+            enabled: no
+            name: NetworkManager
+            state: stopped
+            
     when: bridge_exists.rc != ok or ping_deployer.rc != ok
 
  
   # this is necessary to ensure libvirtd doesn't have dnsmasq running
  
   - name: undefine default network
-    shell: "virsh net-destroy default"
+    shell: "virsh net-destroy {{ item }}"
     ignore_errors: yes
+    with_items:
+    - default
+    - ocp4-upi
 
-  # FIXME: do we need to worry about NetworkManager starting one?
- 
+
   - name: shut down libvirtd (and its dnsmasq)
     systemd:
       enabled: yes
       name: libvirtd
       state: stopped
 
-  - name: kill any remaining dnsmasq processes are dead
+  - name: kill any remaining dnsmasq processes
     shell: "killall dnsmasq"
     ignore_errors: yes
+
+  - name: add cluster name to resolv.conf search list
+    replace:
+      path: "/etc/resolv.conf"
+      regexp: "(^search )($)"
+      replace: '\1 {{ ocp4_dns_domain_name }}\2'
+
+  - name: add DNS server IP addr to resolv.conf
+    lineinfile:
+      path: /etc/resolv.conf
+      line: "nameserver {{ deployer_ip }}"
+      insertbefore: "^nameserver.*"
+      state: present
+
+  - name: flush iptables
+    shell: "iptables -F"
 
   - name: configure NAT in iptables
     shell: "iptables -t nat -A POSTROUTING -s {{ deploy_subnet }} ! -d {{ deploy_subnet }} -o {{ public_intf }} -j MASQUERADE"
