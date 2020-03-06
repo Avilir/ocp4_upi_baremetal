@@ -786,15 +786,14 @@
   - name: prepare to install masters and workers
     block:
 
-    # DONT NEED - just run badfish without container - its python
-    #- name: pull badfish container
-    #  shell: "podman pull docker.io/quads/badfish:latest"
-
-    - name: install badfish.sh
+    - name: install badfish.sh and badfish-par-for-all.sh
       copy: 
-        src: "badfish.sh"
+        src: "{{ item }}"
         dest: "/usr/local/bin/"
         mode: go+rx
+      with_items:
+      - badfish.sh
+      - badfish-parallel.sh
 
     - name: install QUADS_TICKET environment variable
       lineinfile:
