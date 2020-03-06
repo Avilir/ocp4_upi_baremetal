@@ -30,6 +30,7 @@
 
         - name: approve worker CSRs
           shell: "oc get csr -ojson | jq -r '.items[] | select(.status == {} ) | .metadata.name' | xargs oc adm certificate approve"
+          ignore_errors: yes
 
 
 - hosts: all_openshift
