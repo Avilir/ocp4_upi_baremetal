@@ -13,6 +13,7 @@
     # can be overridden in group_vars/all.yml for scale lab
     time_server: "clock.bos.redhat.com"
 
+    resolv_conf: "/etc/resolv.conf"
     chrony_conf: "/etc/chrony.conf"
     tmp_chrony: "/var/tmp/chrony.conf.for_ocp"
     haproxy_cfg: "/etc/haproxy/haproxy.cfg"
