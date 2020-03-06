@@ -425,12 +425,6 @@
 
   - name: set up network bridge
     block:
-        - name: ensure NetworkManager started
-          systemd:
-            enabled: no
-            name: NetworkManager
-            state: started
-
         - name: wait a few sec...
           shell: "sleep 2"
 
@@ -466,12 +460,6 @@
         - name: ping host IP
           shell: "ping -c 2 {{ deployer_ip }}"
 
-        - name: stop NetworkManager 
-          systemd:
-            enabled: no
-            name: NetworkManager
-            state: stopped
-            
     when: bridge_exists.rc != ok or ping_deployer.rc != ok
 
  
