@@ -139,12 +139,31 @@ badfish.sh masters.list --pxe
 badfish.sh masters.list --power-cycle
 ```
 
+A new badfish-parallel.sh does all machines simultaneously.   This works really well in a scale-lab-sized deployment for workers, and is highly recommended there.  Example:
+
+```
+badfish-parallel.sh workers.list --check-boot
+```
+
 If all goes well, then the CoreOS and ignition files will be pulled onto all of these machines and they should reboot and join the OpenShift cluster.  Once that has happened, you can then install the workers with the same procedure, substituting workers.list for masters.list.
 
 For supermicros, you need to do the following:
 ```
 for node in `cat supermicro-workers.list`; do ipmitool -U quads -P $password -H $node chassis bootdev pxe; done
 for node in `cat supermicro-workers.list`; do echo $node; ipmitool -U quads -P $password -H $node chassis power reset; done
+```
+
+To monitor installation from OpenShift perspective, use this command sequence:
+
+```
+cd ignition
+openshift-install wait-for bootstrap-complete --log-level debug
+```
+
+when this shows that OpenShift cluster has formed, then shut off the bootstrap with
+
+```
+virsh destroy ocp4-upi-bootstrap
 ```
 
 # post-installation tasks
@@ -161,9 +180,9 @@ This has to be run there because it uses hostnames like "master-0"
 that aren't defined outside of the cluster.  
 It is leveraging the DNS server (dnsmasq) in the deployer host.
 
-At present this playbook just makes the deployer host a time server for the OpenShift hosts using the deploy_intf network.  Ceph (OpenShift Container Storage) depends on time synchronization.
-
-It also approves CSRs which workers need.  Without this step, workers won't join the OpenShift cluster.
+At present this playbook:
+- makes the deployer host a time server for the OpenShift hosts using the deploy_intf network.  Ceph (OpenShift Container Storage) depends on time synchronization.  
+- approves CSRs which workers need.  Without this step, workers won't join the OpenShift cluster.
 
 
 # resetting machines to initial state
@@ -207,6 +226,4 @@ To see whether bootstrap node is ready for masters, do the next command -- you w
 ```
 ssh core@bootstrap journalctl -f
 ```
-
-
 
