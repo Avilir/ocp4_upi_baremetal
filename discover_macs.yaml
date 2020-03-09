@@ -1,14 +1,17 @@
 ---
 # this playbook uses ansible fact-gathering to collect the 
 # MAC addresses that we need to run the deployment
-# the output will be a local inventory file containing the mac addresses
+# the output will be a local inventory file containing the MAC addresses
 # that can be used by the deployment playbook.
 #
+# If this has run once successfully, you do not need
+# to run it every time you deploy, because the MAC addresses
+# will still be valid (unless the NIC has been replaced)
+#
 # the host and account running this playbook must have
-# password-less ssh access to all masters and workers as well
-# to collect facts needed for the playbook. the labs should automatically
-# install /root/.ssh/authorized_keys to enable this, but if they
-# don't, then use ssh-copy-id command to set this up.
+# password-less ssh access to the deployer host, 
+# and all masters and workers also,
+# to collect facts needed for the playbook
 #
 # the inventory file will not be generated unless
 # deployer host and all masters and workers are accessible
@@ -21,8 +24,16 @@
 - hosts: all
   remote_user: root
   gather_subset: network
+  max_fail_percentage: 0
+  any_errors_fatal: true
   tasks:
 
+  # check that all hosts are online
+  - name: check all hosts online
+    fail:
+      msg: "all hosts must be online and running RHEL8/Centos8"
+    when: ansible_play_hosts != ansible_play_hosts_all
+ 
   # check that group_vars/all.yml variables are defined
 
   - name: check all.yml vars are defined
