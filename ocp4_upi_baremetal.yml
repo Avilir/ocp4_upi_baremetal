@@ -3,8 +3,9 @@
 # you must run discover_macs.yml playbook first when
 # you first get a lab reservation to obtain an inventory
 # file with the MAC addresses of the deployment interface 
-# in them.   You only need to do this once.  Use this output 
-# inventory file to run this playbook.
+# in them.   All hosts must be running RHEL8 at that time.
+# You only need to do this once!
+# Use this output inventory file to run this playbook.
 
 # you must have password-less ssh access to the deployer host
 
@@ -12,6 +13,7 @@
 
 - hosts: all
   remote_user: root
+  gather_facts: no
   tasks:
   - name: include common vars
     include_vars:
@@ -614,12 +616,101 @@
     when: ocp_installed.rc != ok
 
 
-  # set up openshift install ignition files
+  # we don't actually PXE boot masters & workers, just get ready to
 
-  - name: see if ignition files exist
-    shell: "ls -l {{ webdir }}/*.ign"
+  - name: see if badfish is ready
+    shell: "ls masters.list"
     ignore_errors: yes
-    register: ignition
+    register: badfish_ready
+
+  - name: prepare to install masters and workers
+    block:
+
+    - name: install badfish.sh and badfish-par-for-all.sh
+      copy: 
+        src: "{{ item }}"
+        dest: "/usr/local/bin/"
+        mode: go+rx
+      with_items:
+      - badfish.sh
+      - badfish-parallel.sh
+
+    - name: install QUADS_TICKET environment variable
+      lineinfile:
+        path: .bashrc
+        state: present
+        line: "export QUADS_TICKET={{ ipmi_password }}"
+
+    - name: clone badfish repo
+      git:
+        dest: badfish
+        repo: https://github.com/redhat-performance/badfish
+        force: yes
+
+    - name: remove director records from idrac_interfaces.yml
+      lineinfile: 
+        path: "{{ idrac_interfaces }}"
+        regex: "^director_.*"
+        state: absent
+
+    - name: append badfish boot order records to idrac_interfaces.yml for each master
+      lineinfile:
+        path: "{{ idrac_interfaces }}"
+        state: present
+        line: "{{ hostvars[item].badfish_boot_order }}"
+      with_items: "{{ groups['masters'] }}"
+        
+    - name: append badfish boot order records to idrac_interfaces.yml for each worker
+      lineinfile:
+        path: "{{ idrac_interfaces }}"
+        state: present
+        line: "{{ hostvars[item].badfish_boot_order }}"
+      with_items: "{{ groups['workers'] }}"
+
+    - name: filter out duplicate records
+      shell: "sort -u {{ idrac_interfaces }} | grep -v '^#' | grep -v -- '---' > /tmp/i.yml && cp -v /tmp/i.yml {{ idrac_interfaces }}"
+
+    - name: delete masters.list and workers.list
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+      - "masters.list"
+      - "workers.list"
+
+    - name: create masters.list and workers.list
+      file:
+        path: "{{ item }}"
+        state: touch
+      with_items:
+      - "masters.list"
+      - "workers.list"
+
+    - name: insert masters' idrac hostnames into masters.list
+      shell: "echo mgmt-{{ item }} >> masters.list"
+      with_items: "{{ groups['masters'] }}"
+  
+    - name: insert workers' idrac hostnames into workers .list, could be empty
+      shell: "echo mgmt-{{ item }} >> workers.list"
+      with_items: "{{ groups['workers'] }}"
+    when: badfish_ready.rc != ok
+
+    # SOMEDAY: automate badfish commands to install masters
+
+
+  - name: copy post-install playbook files to deployer host
+    copy:
+      src: "{{ item }}"
+      dest: "~/"
+    with_items:
+    - "post_install.yml"
+    - "~/post_install_inventory.yml"
+    - "common_vars.yml"
+    - "group_vars/all.yml"
+
+
+  # always set up openshift install ignition files
+  # because they expire after 24 hours!
 
   - name: generate ignition files
     block:
@@ -711,8 +802,6 @@
         line: "export KUBECONFIG=~/ignition/auth/kubeconfig"
         state: present
 
-    when: ignition.rc != ok
-
 
   # once we re-generate ignition files we have to recreate bootstrap VM
  
@@ -773,97 +862,5 @@
     - name: inspect VM
       shell: "virsh dumpxml ocp4-upi-bootstrap"
 
-    when: bootstrap_started.rc != ok or ignition_files_recreated is defined
 
-
-  # we don't actually PXE boot masters & workers, just get ready to
-
-  - name: see if badfish is ready
-    shell: "ls masters.list"
-    ignore_errors: yes
-    register: badfish_ready
-
-  - name: prepare to install masters and workers
-    block:
-
-    - name: install badfish.sh and badfish-par-for-all.sh
-      copy: 
-        src: "{{ item }}"
-        dest: "/usr/local/bin/"
-        mode: go+rx
-      with_items:
-      - badfish.sh
-      - badfish-parallel.sh
-
-    - name: install QUADS_TICKET environment variable
-      lineinfile:
-        path: .bashrc
-        state: present
-        line: "export QUADS_TICKET={{ ipmi_password }}"
-
-    - name: clone badfish repo
-      git:
-        dest: badfish
-        repo: https://github.com/redhat-performance/badfish
-        force: yes
-
-    - name: remove director records from idrac_interfaces.yml
-      lineinfile: 
-        path: "{{ idrac_interfaces }}"
-        regex: "^director_.*"
-        state: absent
-
-    - name: append badfish boot order records to idrac_interfaces.yml for each master
-      lineinfile:
-        path: "{{ idrac_interfaces }}"
-        state: present
-        line: "{{ hostvars[item].badfish_boot_order }}"
-      with_items: "{{ groups['masters'] }}"
-        
-    - name: append badfish boot order records to idrac_interfaces.yml for each worker
-      lineinfile:
-        path: "{{ idrac_interfaces }}"
-        state: present
-        line: "{{ hostvars[item].badfish_boot_order }}"
-      with_items: "{{ groups['workers'] }}"
-
-    - name: filter out duplicate records
-      shell: "sort -u {{ idrac_interfaces }} | grep -v '^#' | grep -v -- '---' > /tmp/i.yml && cp -v /tmp/i.yml {{ idrac_interfaces }}"
-
-    - name: delete masters.list and workers.list
-      file:
-        path: "{{ item }}"
-        state: absent
-      with_items:
-      - "masters.list"
-      - "workers.list"
-
-    - name: create masters.list and workers.list
-      file:
-        path: "{{ item }}"
-        state: touch
-      with_items:
-      - "masters.list"
-      - "workers.list"
-
-    - name: insert masters' idrac hostnames into masters.list
-      shell: "echo mgmt-{{ item }} >> masters.list"
-      with_items: "{{ groups['masters'] }}"
-  
-    - name: insert workers' idrac hostnames into workers .list, could be empty
-      shell: "echo mgmt-{{ item }} >> workers.list"
-      with_items: "{{ groups['workers'] }}"
-    when: badfish_ready.rc != ok
-
-    # SOMEDAY: automate badfish commands to install masters
-
-  - name: copy post-install playbook files to deployer host
-    copy:
-      src: "{{ item }}"
-      dest: "~/"
-    with_items:
-    - "post_install.yml"
-    - "~/post_install_inventory.yml"
-    - "common_vars.yml"
-    - "group_vars/all.yml"
 
