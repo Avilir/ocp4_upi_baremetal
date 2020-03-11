@@ -37,5 +37,5 @@
     deploy_ip_upper_lim: 250
     deploy_ip_dhcp_min: "{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base }}"
     deploy_ip_dhcp_max: "{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_upper_lim }}"
-    deploy_ip_bootstrap: "{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_upper_lim }}"
+    deploy_ip_bootstrap: "{{ deploy_ip_1st_3_octets }}.2"
 
