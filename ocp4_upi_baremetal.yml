@@ -91,6 +91,17 @@
     shell: "echo {{ item }}"
     with_items: site_machine_types.stdout_lines
 
+  # find time server to use
+
+  - name: for alias, use westford MA US time server
+    set_fact:
+      time_server: clock.bos.redhat.com
+    when: lab_name == "alias"
+
+  - name: for scale_lab, use Raleigh NC US time server
+    set_fact:
+      time_server: clock1.rdu2.redhat.com
+    when: lab_name == "scale_lab"
 
   # install RPMS
  
@@ -427,15 +438,6 @@
 
   - name: set up network bridge
     block:
-        - name: ensure NetworkManager started
-          systemd:
-            enabled: no
-            name: NetworkManager
-            state: started
-
-        - name: wait a few sec...
-          shell: "sleep 2"
-
         - name: take down interface
           shell: "nmcli con down {{ deploy_intf }}"
           ignore_errors: yes
@@ -468,12 +470,6 @@
         - name: ping host IP
           shell: "ping -c 2 {{ deployer_ip }}"
 
-        - name: stop NetworkManager 
-          systemd:
-            enabled: no
-            name: NetworkManager
-            state: stopped
-            
     when: bridge_exists.rc != ok or ping_deployer.rc != ok
 
  
