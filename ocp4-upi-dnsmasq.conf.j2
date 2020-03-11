@@ -15,7 +15,7 @@ listen-address={{ deployer_ip }}
 
 dhcp-no-override
 dhcp-authoritative
-dhcp-lease-max={{ deploy_ip_upper_lim - deploy_ip_master_base - 5 }}
+dhcp-lease-max={{ deploy_ip_upper_lim - 5 }}
 dhcp-boot=lpxelinux.0
 dhcp-range={{ deploy_ip_dhcp_min }},{{ deploy_ip_dhcp_max }}
 dhcp-host={{ bootstrap_mac }},{{ deploy_ip_bootstrap }},bootstrap
