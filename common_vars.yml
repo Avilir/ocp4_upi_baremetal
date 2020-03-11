@@ -10,9 +10,6 @@
     ocp4_dns_domain_base: "myocp4.com"
     ocp4_dns_domain_name: "{{ ocp4_cluster_name }}.{{ ocp4_dns_domain_base }}"
 
-    # can be overridden in group_vars/all.yml for scale lab
-    time_server: "clock.bos.redhat.com"
-
     resolv_conf: "/etc/resolv.conf"
     chrony_conf: "/etc/chrony.conf"
     tmp_chrony: "/var/tmp/chrony.conf.for_ocp"
