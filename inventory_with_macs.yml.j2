@@ -1,0 +1,40 @@
+---
+# jinja2 file for ~/inventory_with_macs.yml
+deployer:
+  hosts:
+{% for h in groups['deployer'] %}
+    {{ h }}:
+      machine_type: {{ hostvars[h]['machine_type'] }}
+      deploy_mac: {{ hostvars[h]['deploy_mac'] }}
+{% if hostvars[h]['baremetal_mac'] is defined %}
+      baremetal_mac: {{ hostvars[h]['baremetal_mac'] }}
+{% endif %}
+{% endfor %}
+
+masters:
+  hosts:
+{% for h in groups['masters'] %}
+    {{ h }}:
+      machine_type: {{ hostvars[h]['machine_type'] }}
+      deploy_mac: {{ hostvars[h]['deploy_mac'] }}
+{% if hostvars[h]['baremetal_mac'] is defined %}
+      baremetal_mac: {{ hostvars[h]['baremetal_mac'] }}
+{% endif %}
+{% endfor %}
+
+workers:
+  hosts:
+{% for h in groups['workers'] %}
+    {{ h }}:
+      machine_type: {{ hostvars[h]['machine_type'] }}
+      deploy_mac: {{ hostvars[h]['deploy_mac'] }}
+{% if hostvars[h]['baremetal_mac'] is defined %}
+      baremetal_mac: {{ hostvars[h]['baremetal_mac'] }}
+{% endif %}
+{% endfor %}
+
+all_openshift:
+  children:
+    masters:
+    workers:
+

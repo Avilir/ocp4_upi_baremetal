@@ -19,6 +19,7 @@ lab_metadata:
   - machine_type: '740xd'
     badfish_boot_order: "director_740xd_interfaces: HardDisk.List.1-1,NIC.Slot.7-1-1"
     provision_intf: ens7f0
+    baremetal_intf: ens7f1
     public_intf: eno3
     disabled_intfs:
     - eno1
@@ -34,6 +35,7 @@ lab_metadata:
   - machine_type: '1029u'
     badfish_boot_order: "director_1029u_interfaces: HardDisk.List.1-1,NIC.Slot.2-1"
     provision_intf: ens2f0
+    baremetal_intf: ens2f1
     public_intf: eno1
     disabled_intfs:
     - eno1
@@ -42,15 +44,14 @@ lab_metadata:
     - eno4
     - ens1f1
     - ens2f0
-    - ens2f1
 
   - machine_type: 'r620'
     badfish_boot_order: "director_620_interfaces: HardDisk.List.1-1,NIC.Slot.2-3"
     provision_intf: enp66s0f2
+    baremetal_intf: enp66s0f3
     public_intf: eno3
     disabled_intfs:
     - eno1
     - eno2
     - eno3
-    - enp66s0f3
 

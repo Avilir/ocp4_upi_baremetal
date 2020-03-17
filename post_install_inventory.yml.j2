@@ -1,0 +1,24 @@
+# in this inventory file, the masters and workers are only accessible
+# through the openshift network and so we must call them
+# by their openshift node names in /etc/dnsmasq.conf
+
+deployer:
+  hosts:
+    {{ groups['deployer'][0] }}:
+
+masters:
+  hosts:
+{% for h in groups['masters']  %}
+    master-{{ loop.index0 }}:
+{% endfor %}
+
+workers:
+  hosts:
+{% for h in groups['workers']  %}
+    worker-{{ "%02d" | format(loop.index0) }}:
+{% endfor %}
+
+all_openshift:
+  children:
+    masters:
+    workers:
