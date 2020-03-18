@@ -25,7 +25,7 @@ dhcp-host={{ hostvars[h]['deploy_mac'] }},{{ deploy_ip_1st_3_octets }}.{{ deploy
 {% endfor %}
 
 {% for h in groups['workers']  %}
-dhcp-host={{ hostvars[h]['deploy_mac'] }},{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0  + master_count|int }},worker-{{ loop.index0 }}
+dhcp-host={{ hostvars[h]['deploy_mac'] }},{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0  + master_count|int }},worker-{{ "%02d" | format(loop.index0) }}
 {% endfor %}
 
 # tell masters & workers to go get boot files from here
@@ -52,8 +52,8 @@ srv-host=_etcd-server-ssl._tcp.{{ ocp4_dns_domain_name }},etcd-{{ loop.index0 }}
 {% endfor %}
 
 {% for h in groups['workers']  %}
-address=/worker-{{ loop.index0 }}.{{ ocp4_dns_domain_name }}/{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0 + master_count|int }}
-address=/etcd-{{ loop.index0 }}.{{ ocp4_dns_domain_name }}/{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0 + master_count|int }}
+address=/worker-{{ "%02d" | format(loop.index0) }}.{{ ocp4_dns_domain_name }}/{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0 + master_count|int }}
+#address=/etcd-{{ loop.index0 }}.{{ ocp4_dns_domain_name }}/{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_master_base + loop.index0 + master_count|int }}
 
 {% endfor %}
 
