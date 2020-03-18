@@ -319,6 +319,12 @@
         regexp: "#log "
         replace: "log "
 
+    - name: restart chronyd service
+      systemd:
+        enabled: yes
+        name: chronyd
+        state: restarted
+
     when: chrony.rc != ok
 
     # chrony for masters and workers must be set up post-install
@@ -722,6 +728,10 @@
     - name: make this available to template
       set_fact:
         ocp4_public_key: "{{ deployer_public_key.stdout_lines[0] }}"
+
+    - name: add this to deployer's authorized keys for post_install.yml
+      authorized_key:
+        key: "{{ ocp4_public_key }}"
 
     - name: get transpiler
       git:
