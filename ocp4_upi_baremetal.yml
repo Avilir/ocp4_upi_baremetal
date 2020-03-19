@@ -869,4 +869,10 @@
       shell: "virsh dumpxml ocp4-upi-bootstrap"
 
 
+  - name: setup VNC
+    block:
+    - name: set vnc passwd
+      shell: "echo {{ vncpasswd }} | vncpasswd -f"
 
+    - name: start vncserver
+      shell: "vncserver -geometry 1024x768 :1 && sleep 2"
