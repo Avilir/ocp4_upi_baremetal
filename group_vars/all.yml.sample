@@ -10,11 +10,13 @@
 # example
 #ipmi_password: "rdu2@502328"
 
-# UPDATE THIS WITH YOUR RHCOS release URL, example:
+# UPDATE THIS WITH YOUR RHCOS release URL
+# URL must end in a "/" 
 # example:
 #rhcos_url: https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/pre-release/latest/
 
 # UPDATE THIS WITH YOUR OpenShift client+install tree
+# URL must end in a "/" 
 # example:
 #openshift_release_url: https://mirror.openshift.com/pub/openshift-v4/clients/ocp-dev-preview/4.3.0-0.nightly-2020-02-20-120202/
 
