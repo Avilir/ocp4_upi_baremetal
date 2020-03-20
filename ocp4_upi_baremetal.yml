@@ -561,7 +561,7 @@
       shell: "echo {{ vncpasswd }} | vncpasswd -f > ~/.vnc/passwd"
 
     - name: start vncserver
-      shell: "vncserver -geometry 1024x768 :1 && sleep 2"
+      shell: "vncserver :1"
 
 
   # install openshift
