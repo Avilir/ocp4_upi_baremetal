@@ -555,6 +555,15 @@
       state: started
 
 
+  - name: setup VNC
+    block:
+    - name: set vnc passwd
+      shell: "echo {{ vncpasswd }} | vncpasswd -f > ~/.vnc/passwd"
+
+    - name: start vncserver
+      shell: "vncserver -geometry 1024x768 :1 && sleep 2"
+
+
   # install openshift
 
   - name: see if openshift client and install utilities are installed
@@ -732,6 +741,7 @@
     - name: add this to deployer's authorized keys for post_install.yml
       authorized_key:
         key: "{{ ocp4_public_key }}"
+        user: root
 
     - name: get transpiler
       git:
@@ -869,10 +879,3 @@
       shell: "virsh dumpxml ocp4-upi-bootstrap"
 
 
-  - name: setup VNC
-    block:
-    - name: set vnc passwd
-      shell: "echo {{ vncpasswd }} | vncpasswd -f"
-
-    - name: start vncserver
-      shell: "vncserver -geometry 1024x768 :1 && sleep 2"
