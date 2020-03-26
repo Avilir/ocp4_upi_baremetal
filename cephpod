@@ -1,0 +1,13 @@
+#!/bin/bash
+ceph_pod=$(oc -n openshift-storage get pod | awk '/tools/{print $1}')
+if [ -z "$ceph_pod" ] ; then
+  oc create -f ~/toolbox.yaml
+  sleep 5
+  ceph_pod=$(oc -n openshift-storage get pod | awk '/tools/{print $1}')
+  if [ -z "$ceph_pod" ] ; then
+     echo "could not start ceph toolbox pod"
+     exit 1
+  fi
+fi
+oc -n openshift-storage rsh $ceph_pod ceph $*
+
