@@ -191,6 +191,8 @@ When you are done with the cluster, or if you want to re-install from scratch, u
 
 ```
 for typ in masters workers ; do badfish.sh $typ.list -t foreman ; done
+badfish.sh masters.list --check-boot
+badfish.sh workers.list --check-boot
 <keep doing this until you see "Current boot order is set to: foreman">
 ```
 
