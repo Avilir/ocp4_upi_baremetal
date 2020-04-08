@@ -3,7 +3,7 @@
     
     ipmi_username: "quads"
     lab_metadata_file: "lab_metadata.yml"
-    machine_types_by_node: "machine_types_by_node.list"
+    machine_types_by_node: "/tmp/machine_types_by_node.list"
 
     # worked for Alias, may be different in scale lab
     ocp4_cluster_name: "test"
