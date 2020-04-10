@@ -74,21 +74,19 @@
 
   # construct list of machine types
 
-  - name: remove machine types tmp file
-    file:
-      state: absent
-      path: "{{ machine_types_by_node }}"
+  - name: remove machine type file
+    local_action: "file path={{ machine_types_by_node }} state=absent"
 
   - name: append machine_type to this file for each host
-    shell: "echo {{ hostvars[item].machine_type }} >> {{ machine_types_by_node }}"
+    local_action: command sh -c "echo {{ hostvars[item].machine_type }} >> {{ machine_types_by_node }}"
     with_items: "{{ groups['all_openshift'] }}"
   
   - name: sort out duplicates to get machine type list
-    shell: "sort -u {{ machine_types_by_node }}"
+    local_action: command sort -u "{{ machine_types_by_node }}"
     register: site_machine_types
 
   - name: list all machine types for this site
-    shell: "echo {{ item }}"
+    local_action: command echo "{{ item }}"
     with_items: site_machine_types.stdout_lines
 
   # find time server to use
@@ -154,7 +152,7 @@
 
         - name: install OCP4-related packages
           yum: 
-            name: "ipmitool,wget,virt-install,jq,python3,podman,httpd,syslinux-tftpboot,haproxy,httpd,virt-install,vim-enhanced,git,tmux,python3-beautifulsoup4,ansible,tigervnc-server,tigervnc-server-module,firefox"
+            name: "ipmitool,wget,virt-install,jq,python3,podman,httpd,syslinux-tftpboot,haproxy,httpd,virt-install,vim-enhanced,git,tmux,python3-beautifulsoup4,ansible,tigervnc-server,tigervnc-server-module,firefox,python3-psutil"
 
         - name: ensure changes committed
           shell: sync
@@ -167,14 +165,41 @@
     when: packages_installed.rc != ok
 
 
+  - name: see if vnc running
+    pids:
+      name: Xvnc
+    register: vnc_pids
+
+  - name: setup VNC
+    when: vnc_pids | length == 0
+    block:
+    - name: create vnc directory
+      file:
+        path: .vnc
+        state: directory
+
+    - name: set vnc passwd
+      shell: "echo {{ vncpasswd }} | vncpasswd -f > ~/.vnc/passwd"
+
+    - name: make it only readable by root
+      file:
+        path: ~/.vnc/passwd
+        mode: 0600
+
+    - name: start vncserver
+      shell: "vncserver :1"
+
+
+
   # set up TFTP boot config
 
   - name: see if tftpboot already set up
-    shell: "ls -l {{ pxedir }}/bootstrap"
+    shell: "ls -l {{ pxedir }}/bootstrap.type_vm"
     ignore_errors: yes
     register: tftp_exists
 
   - name: set up tftpboot
+    when: tftp_exists.rc != ok
     block:
 
     - name: check we have deploy_mac defined
@@ -242,7 +267,6 @@
     - name: make SELinux happy
       shell: "restorecon -r {{ pxedir }}"
 
-    when: tftp_exists.rc != ok
 
   # set up dnsmasq config
 
@@ -252,6 +276,7 @@
     register: dnsmasq_edited
 
   - name: set up dnsmasq
+    when: dnsmasq_edited.rc != ok
     block:
     - name: save original dnsmasq.conf 
       shell: "if [ ! {{ dnsmasq_conf }}.orig ] ; then cp {{ dnsmasq_conf }} {{ dnsmasq_conf }}.orig ; fi"
@@ -265,7 +290,6 @@
 
     - name: append it to dnsmasq config
       shell: "cat /var/tmp/ocp4-upi-dnsmasq.conf >> {{ dnsmasq_conf }}"
-    when: dnsmasq_edited.rc != ok
 
 
   - name: disable NetworkManager dnsmasq
@@ -287,12 +311,15 @@
         path: "{{ dhclient_conf }}"
         line: 'supercede domain-search "test.myocp4.com", "alias.bos.scalelab.redhat.com";'
 
+    # chrony for masters and workers must be set up post-install
+ 
   - name: see if timeserver is available
     shell: "grep -q {{ time_server }} {{ chrony_conf }}"
     ignore_errors: yes
     register: chrony
     
   - name: make deployer host be timeserver also
+    when: chrony.rc != ok
     block:
     - name: remove default time servers
       lineinfile:
@@ -325,10 +352,7 @@
         name: chronyd
         state: restarted
 
-    when: chrony.rc != ok
 
-    # chrony for masters and workers must be set up post-install
- 
 
   # set up haproxy config
  
@@ -338,6 +362,7 @@
     register: haproxy_edited
 
   - name: set up haproxy
+    when: haproxy_edited.rc != ok
     block:
     - name: generate haproxy entries for masters and workers
       template:
@@ -349,7 +374,6 @@
 
     - name: append to haproxy config
       shell: "cat /var/tmp/ocp4-upi-haproxy.cfg >> {{ haproxy_cfg }}"
-    when: haproxy_edited.rc != ok
 
 
   # pull RHCOS and make it available for PXE booters
@@ -361,6 +385,7 @@
     register: rhcos_downloaded
 
   - name: setup RHCOS for boot
+    when: rhcos_downloaded.rc != ok
     block:
     - name: configure httpd
       lineinfile:
@@ -427,7 +452,6 @@
       shell: 
         cmd: "ls -lL rhcos-metal-bios.raw.gz"
         chdir: "{{ webdir }}"
-    when: rhcos_downloaded.rc != ok
 
 
   # set up network interface for deployment
@@ -443,6 +467,7 @@
     register: ping_deployer
 
   - name: set up network bridge
+    when: bridge_exists.rc != ok or ping_deployer.rc != ok
     block:
         - name: take down interface
           shell: "nmcli con down {{ deploy_intf }}"
@@ -476,7 +501,6 @@
         - name: ping host IP
           shell: "ping -c 2 {{ deployer_ip }}"
 
-    when: bridge_exists.rc != ok or ping_deployer.rc != ok
 
  
   # this is necessary to ensure libvirtd doesn't have dnsmasq running
@@ -555,15 +579,6 @@
       state: started
 
 
-  - name: setup VNC
-    block:
-    - name: set vnc passwd
-      shell: "echo {{ vncpasswd }} | vncpasswd -f > ~/.vnc/passwd"
-
-    - name: start vncserver
-      shell: "vncserver :1"
-
-
   # install openshift
 
   - name: see if openshift client and install utilities are installed
@@ -572,6 +587,7 @@
     register: ocp_installed
 
   - name: install openshift client and installer
+    when: ocp_installed.rc != ok
     block:
     - name: remove any openshift tarballs
       file: 
@@ -624,17 +640,17 @@
     - name: report openshift version installed
       shell: "openshift-install version"
 
-    when: ocp_installed.rc != ok
 
 
   # we don't actually PXE boot masters & workers, just get ready to
 
   - name: see if badfish is ready
-    shell: "ls masters.list"
+    shell: "ls masters.list && ls badfish"
     ignore_errors: yes
     register: badfish_ready
 
   - name: prepare to install masters and workers
+    when: badfish_ready.rc != ok
     block:
 
     - name: install badfish.sh and badfish-par-for-all.sh
@@ -704,7 +720,6 @@
     - name: insert workers' idrac hostnames into workers .list, could be empty
       shell: "echo mgmt-{{ item }} >> workers.list"
       with_items: "{{ groups['workers'] }}"
-    when: badfish_ready.rc != ok
 
     # SOMEDAY: automate badfish commands to install masters
 
