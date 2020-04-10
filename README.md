@@ -174,7 +174,8 @@ you can run this playbook *from your deployer host*:
 
 ```
 cd
-ansible-playbook -i post_install_inventory.yml post_install.yml
+ansible-playbook --ssh-common-args '-o StrictHostKeyChecking=no' \
+   -i post_install_inventory.yml post_install.yml
 ```
 
 This has to be run there because it uses hostnames like "master-0" 
