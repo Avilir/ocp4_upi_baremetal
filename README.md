@@ -186,6 +186,20 @@ At present this playbook:
 - makes the deployer host a time server for the OpenShift hosts using the deploy_intf network.  Ceph (OpenShift Container Storage) depends on time synchronization.  
 - approves CSRs which workers need.  Without this step, workers won't join the OpenShift cluster.
 
+To access the openshift console, you will need vncviewer installed on your laptop.  A vncserver has already been started on the host.  You may need to use this /root/.vnc/xstartup file:
+
+```
+#!/bin/sh
+unset SESSION_MANAGER
+gnome-session --session=gnome-classic
+```
+
+Then on your laptop:
+
+```
+sudo dnf install -y tigervnc
+vncviewer e26-h01-740xd.alias.bos.scalelab.redhat.com:1
+```
 
 # resetting machines to initial state
 
