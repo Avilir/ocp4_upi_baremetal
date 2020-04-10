@@ -35,27 +35,21 @@ After the RHEL8 rebuild completes, you can then discover information about your 
 ```
 # dnf install -y git ansible
 ```
-Next, ensure that you have password-less ssh access to all the machines in your cluster inventory,  so that password-less ssh is possible (ansible depends on this).  
 
-* You may need to create a public-private key pair if you haven't already done this, with ssh-keygen.  
-* If necessary, clear out ~/.ssh/known_hosts entries for previous incarnations of these hosts.  
-* Will Foster's playbook will your public key installed on all the machines that you'll be using:
-
-```
-git clone https://github.com/sadsfae/ansible-sshkeys
-cd ansible-sshkeys
-<edit "hosts" inventory file>
-ansible-playbook --ssh-common-args '-o StrictHostKeyChecking=no' \
-  -i hosts -e ansible_ssh_pass=TakeAWildGuess install/sshkeys.yml 
-cd
-```
 Once that's done, pull deploy playbooks and configure them:
 ```
 # git clone https://github.com/bengland2/ocp4_upi_baremetal
 # cd ocp4_upi_baremetal
 ```
 
-You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   Construct an input inventory file to define 3 host groups:
+You must ensure that you have password-less ssh access to all the machines in your cluster inventory,  
+so that password-less ssh is possible (ansible depends on this).  
+
+* You may need to create a public-private key pair if you haven't already done this, with ssh-keygen.  
+* If necessary, clear out ~/.ssh/known_hosts entries for previous incarnations of these hosts.  
+* This playbook will get your public key installed on all the machines that you'll be using:
+
+Construct an input inventory file to define 3 host groups:
 
 * deployer - only one host in this group, it provides services to the entire cluster such as DHCP, HTTP, PXE, DNS, and NTP.
 * masters - usually 3 of them, this provides OpenShift Kubernetes management infrastructure.   If there are no workers, apps can be run on them too
@@ -87,14 +81,14 @@ in **lab_metadata.yml**.   This metadata file defines properties of each machine
 This allows you to avoid defining the variables needed by the
 playbook for each machine or machine type.   
 
-Then define your cluster parameters by doing:
+Now run the playbook to install public key (and python if necessary):
 
 ```
-cd group_vars
-cp all.yml.sample all.yml
-<edit all.yml>
-cd ..
+ansible-playbook --ssh-common-args '-o StrictHostKeyChecking=no' \
+  -i inventory.yml -e ansible_ssh_pass=TakeAWildGuess install_public_key.yml 
 ```
+
+You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   
 
 Now run the first playbook to get an output inventory file with mac addresses filled in.
 
@@ -103,6 +97,15 @@ ansible-playbook -vv -i inventory.yml discover_macs.yaml
 ```
 
 This should output a file named **~/inventory_with_macs.yml** by default - it will look the same as your previous inventory but with per-host deploy_mac variable added to each record.   From now on, you use this as your inventory file, not the preceding one.
+
+Then define your cluster parameters by doing:
+
+```
+cd group_vars
+cp all.yml.sample all.yml
+<edit all.yml>
+cd ..
+```
 
 # deployment phase
 
@@ -117,7 +120,7 @@ Or you can provide repo files that point to an internal site like this one:
 
 http://download.lab.bos.redhat.com/released/RHEL-8/8.1.0/
 
-Now you set up your deployment with:
+Now you prepare your deployer host with:
 
 ```
 ansible-playbook -i ~/inventory_with_macs.yml ocp4_upi_baremetal.yml
@@ -193,7 +196,7 @@ When you are done with the cluster, or if you want to re-install from scratch, u
 for typ in masters workers ; do badfish.sh $typ.list -t foreman ; done
 badfish.sh masters.list --check-boot
 badfish.sh workers.list --check-boot
-<keep doing this until you see "Current boot order is set to: foreman">
+<keep doing this every 5 min until you see "Current boot order is set to: foreman">
 ```
 
 
