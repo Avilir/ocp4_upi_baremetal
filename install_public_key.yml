@@ -1,0 +1,21 @@
+---
+# Ansible playbook to install public key on all inventory hosts
+# must not gather facts or run any module that depends on python
+# because python may not yet be installed
+
+- hosts: all
+  gather_facts: no
+  remote_user: root
+  vars:
+    ssh_public_key_file: ~/.ssh/id_rsa.pub
+    ssh_auth_keys: ~/.ssh/authorized_keys
+  tasks:
+  - name: read default ssh public key
+    local_action: command cat "{{ ssh_public_key_file }}"
+    register: ssh_public_key
+
+  - name: install public key in target account .ssh/authorized_keys
+    raw: "echo {{ ssh_public_key.stdout_lines[0] }} > {{ ssh_auth_keys }}"
+
+  - name: install python so rest of ansible works!
+    raw: "dnf install -y python3 && ln -sv /usr/bin/python3 /usr/bin/python"
