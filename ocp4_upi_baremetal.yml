@@ -152,7 +152,7 @@
 
         - name: install OCP4-related packages
           yum: 
-            name: "ipmitool,wget,virt-install,jq,python3,podman,httpd,syslinux-tftpboot,haproxy,httpd,virt-install,vim-enhanced,git,tmux,python3-beautifulsoup4,ansible,tigervnc-server,tigervnc-server-module,firefox,python3-psutil"
+            name: "ipmitool,wget,virt-install,jq,python3,podman,httpd,syslinux-tftpboot,haproxy,httpd,virt-install,vim-enhanced,git,tmux,python3-beautifulsoup4,ansible,tigervnc-server,tigervnc-server-module,firefox,python3-psutil,gnome-session,gnome-classic-session"
 
         - name: ensure changes committed
           shell: sync
@@ -170,8 +170,11 @@
       name: Xvnc
     register: vnc_pids
 
+  - name: show vnc_pids length
+    local_action: command echo "{{ vnc_pids.pids | length }}"
+
   - name: setup VNC
-    when: vnc_pids | length == 0
+    when: (vnc_pids.pids | length) == 0
     block:
     - name: create vnc directory
       file:
@@ -188,7 +191,6 @@
 
     - name: start vncserver
       shell: "vncserver :1"
-
 
 
   # set up TFTP boot config
