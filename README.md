@@ -90,8 +90,6 @@ ansible-playbook --ssh-common-args '-o StrictHostKeyChecking=no' \
 
 You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   
 
-Now run the first playbook to get an output inventory file with mac addresses filled in.
-
 ```
 ansible-playbook -vv -i inventory.yml discover_macs.yaml
 ```
@@ -217,7 +215,7 @@ The slowest step in the installation procedure is download of RHCOS.  If you hav
 To see whether masters and workers are pulling files from httpd service on the deployer host:
 
 ```
-tail -f /var/log/httpd/*log
+tail -f /var/log/httpd/\*log
 ```
 
 To see whether DHCP and TFTP requests are being received by the deployer host:
@@ -231,4 +229,19 @@ To see whether bootstrap node is ready for masters, do the next command -- you w
 ```
 ssh core@bootstrap journalctl -f
 ```
+
+To see whether CoreOS is installing, watch the console for a master node or worker node.   Normally, the PXE boot
+installs CoreOS image using the kernel boot line at the top, and then the system reboots to CoreOS on disk.  It next
+pulls ignition files using HTTP GETs logged on console.   When that succeeds, then it reboots again, and at this point
+the node knows enough to try to join the cluster.   Monitor its progress there with.
+
+```
+oc get nodes
+```
+Finally, when the cluster quorum is formed, see if it is making progress using:
+
+```
+oc get co
+```
+which shows operators being installed and brought online.
 
