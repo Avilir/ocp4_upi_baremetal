@@ -16,6 +16,7 @@
     haproxy_cfg: "/etc/haproxy/haproxy.cfg"
     dnsmasq_conf: "/etc/dnsmasq.conf"
     dhclient_conf: "/etc/dhcp/dhclient.conf"
+    netmgr_conf: "/etc/NetworkManager/NetworkManager.conf"
     webdir: "/var/www/html/ocp4-upi"
     pxedir: "/var/lib/tftpboot/pxelinux.cfg"
     idrac_interfaces: "~/badfish/config/idrac_interfaces.yml"
