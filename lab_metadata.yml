@@ -26,7 +26,7 @@ lab_metadata:
     - eno2
     - eno3
     - eno4
-
+    - ens7f1
 
   # here is a *subset* of machine types in scale lab
  
