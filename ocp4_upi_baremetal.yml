@@ -294,11 +294,27 @@
       shell: "cat /var/tmp/ocp4-upi-dnsmasq.conf >> {{ dnsmasq_conf }}"
 
 
-  - name: disable NetworkManager dnsmasq
-    lineinfile:
-      path: /etc/NetworkManager/NetworkManager.conf
-      line: "dns=none"
-      insertafter: '\[main\]'
+  # make sure resolv.conf stays the way we want it
+ 
+  - name: see if NetworkManager knows not to overwrite resolv.conf
+    shell: "grep -q dns=none {{ netmgr_conf }}"
+    ignore_errors: yes
+    register: nmconf_edited
+    
+  - name: disable NetworkManager overwriting resolv.conf
+    when: nmconf_edited.rc != ok
+    block:
+      - name: edit NetworkManager conf file
+        lineinfile:
+          path: /etc/NetworkManager/NetworkManager.conf
+          line: "dns=none"
+          insertafter: '\[main\]'
+
+      - name: restart NetworkManager so it sees the change
+        systemd:
+          enabled: yes
+          name: NetworkManager
+          state: restarted
 
 
   - name: prevent dhclient from forgetting our resolv.conf
@@ -312,6 +328,7 @@
       lineinfile:
         path: "{{ dhclient_conf }}"
         line: 'supercede domain-search "test.myocp4.com", "alias.bos.scalelab.redhat.com";'
+
 
     # chrony for masters and workers must be set up post-install
  
@@ -454,6 +471,15 @@
       shell: 
         cmd: "ls -lL rhcos-metal-bios.raw.gz"
         chdir: "{{ webdir }}"
+
+
+  # turn on arp filtering
+
+  - name: create arp filter config file
+    shell: "echo net.ipv4.conf.all.arp_filter = 1 > /etc/sysctl.d/arp.conf"
+
+  - name: and run it
+    shell: "sysctl -p /etc/sysctl.d/arp.conf"
 
 
   # set up network interface for deployment
@@ -722,6 +748,9 @@
     - name: insert workers' idrac hostnames into workers .list, could be empty
       shell: "echo mgmt-{{ item }} >> workers.list"
       with_items: "{{ groups['workers'] }}"
+
+    - name: concatenate workers and masters into all_openshift.list
+      shell: "cat masters.list workers.list > all_openshift.list"
 
     # SOMEDAY: automate badfish commands to install masters
 
