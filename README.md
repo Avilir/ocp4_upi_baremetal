@@ -138,9 +138,9 @@ To get ready for openshift deployment, you must set up boot order and enable PXE
 cd
 source ~/.bashrc
 badfish-parallel.sh all_openshift.list -t director
-badfish.sh all_openshift.list --check-boot
+badfish-parallel.sh all_openshift.list --check-boot
 <keep doing this until you see "Current boot order is set to: director">
-badfish.sh all_openshift.list --pxe
+badfish-parallel.sh all_openshift.list --pxe
 ```
 
 First we must bring up the masters and establish an openshift cluster:
@@ -220,11 +220,12 @@ vncviewer e26-h01-740xd.alias.bos.scalelab.redhat.com:1
 When you are done with the cluster, or if you want to re-install from scratch, use the next command to revert the boot order to the original state that the QUADS labs and Foreman expect.   
 
 ```
-for typ in masters workers ; do badfish.sh $typ.list -t foreman ; done
-badfish.sh masters.list --check-boot
-badfish.sh workers.list --check-boot
-<keep doing this every 5 min until you see "Current boot order is set to: foreman">
+badfish-parallel.sh all_openshift.list -t foreman
+badfish-parallel.sh all_openshift.list --check-boot
 ```
+
+Keep checking boot order every 5 min until you see "Current boot order is set to: foreman"
+or at least that first interface in boot order is the foreman interface.
 
 
 
