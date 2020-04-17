@@ -130,41 +130,51 @@ Dustin's document describes what the playbook should be doing.  This will take a
 
 To start master and worker installation, from the deployer host use the installed **badfish.sh** for Dell machines.  It applies commands to a list of hosts in a file.  At present, it does not support SuperMicro machines, but should work with most Dell machines (that have Redfish API).    See Dustin's notes about supermicro alternative procedures.   **badfish.sh** depends on the **QUADS_TICKET** environment variable defined in **~/.bashrc**  .
 
+A new badfish-parallel.sh does all machines simultaneously.   This works really well in a scale-lab-sized deployment for workers, and is highly recommended there.  However, if you want to do it the slow 1-at-a-time way, badfish.sh is still available.
+
+To get ready for openshift deployment, you must set up boot order and enable PXE on all openshift nodes.
+
 ```
 cd
 source ~/.bashrc
-badfish.sh masters.list -t director
-badfish.sh masters.list --check-boot
+badfish-parallel.sh all_openshift.list -t director
+badfish.sh all_openshift.list --check-boot
 <keep doing this until you see "Current boot order is set to: director">
-badfish.sh masters.list --pxe
-badfish.sh masters.list --power-cycle
+badfish.sh all_openshift.list --pxe
 ```
 
-A new badfish-parallel.sh does all machines simultaneously.   This works really well in a scale-lab-sized deployment for workers, and is highly recommended there.  Example:
+First we must bring up the masters and establish an openshift cluster:
 
 ```
-badfish-parallel.sh workers.list --check-boot
-```
-
-If all goes well, then the CoreOS and ignition files will be pulled onto all of these machines and they should reboot and join the OpenShift cluster.  Once that has happened, you can then install the workers with the same procedure, substituting workers.list for masters.list.
-
-For supermicros, you need to do the following:
-```
-for node in `cat supermicro-workers.list`; do ipmitool -U quads -P $password -H $node chassis bootdev pxe; done
-for node in `cat supermicro-workers.list`; do echo $node; ipmitool -U quads -P $password -H $node chassis power reset; done
+badfish-parallel.sh masters.list --power-cycle
 ```
 
 To monitor installation from OpenShift perspective, use this command sequence:
 
 ```
 cd ignition
-openshift-install wait-for bootstrap-complete --log-level debug
+openshift-install wait-for bootstrap-complete
 ```
 
 when this shows that OpenShift cluster has formed, then shut off the bootstrap with
 
 ```
 virsh destroy ocp4-upi-bootstrap
+```
+
+Now we can start installing the workers - this can slightly overlap the masters, since initial phase of worker install
+does not involve openshift at all, just CoreOS install.  
+
+```
+badfish-parallel.sh workers.list --power-cycle
+```
+
+If all goes well, then the CoreOS and ignition files will be pulled onto all of these machines and they should reboot and join the OpenShift cluster.  
+
+For SuperMicros in the scale lab, you need to do the following:
+```
+for node in `cat supermicro-workers.list`; do ipmitool -U quads -P $password -H $node chassis bootdev pxe; done
+for node in `cat supermicro-workers.list`; do echo $node; ipmitool -U quads -P $password -H $node chassis power reset; done
 ```
 
 # post-installation tasks
@@ -180,11 +190,15 @@ ansible-playbook --ssh-common-args '-o StrictHostKeyChecking=no' \
 
 This has to be run there because it uses hostnames like "master-0" 
 that aren't defined outside of the cluster.  
-It is leveraging the DNS server (dnsmasq) in the deployer host.
+It is using the DNS server (dnsmasq) in the deployer host.
 
 At present this playbook:
 - makes the deployer host a time server for the OpenShift hosts using the deploy_intf network.  Ceph (OpenShift Container Storage) depends on time synchronization.  
 - approves CSRs which workers need.  Without this step, workers won't join the OpenShift cluster.
+
+You may have to run this more than once if not all workers have reached the right stage where their CSRs have been
+submitted to the OpenShift Cluster.    That's ok, the procedure is idempotent so it can be run as many times as
+necessary.
 
 To access the openshift console, you will need vncviewer installed on your laptop.  A vncserver has already been started on the host.  You may need to use this /root/.vnc/xstartup file:
 
