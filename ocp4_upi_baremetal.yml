@@ -101,6 +101,22 @@
       time_server: clock1.rdu2.redhat.com
     when: lab_name == "scale_lab"
 
+
+  # turn off any disabled interfaces (for Q-in-Q 1 configs)
+
+  - name: get list of active interfaces
+    shell: "nmcli conn show | grep -v -- -- | grep -v NAME | grep -v {{ public_intf }} | awk '{ print $NF }'"
+    register: deployer_disable_intfs
+
+  - name: get subset in disabled_intfs list
+    set_fact:
+      intfs_to_disable: "{{ deployer_disable_intfs.stdout_lines | intersect(disabled_intfs) }}"
+
+  - name: down these interfaces using uuid from NetworkManager
+    shell: "nmcli conn down $(nmcli conn show | grep {{ item }} | awk '{ print $(NF-2) }')"
+    with_items: "{{ intfs_to_disable }}"
+    
+
   # install RPMS
  
   - name: pull common variables
@@ -530,7 +546,6 @@
           shell: "ping -c 2 {{ deployer_ip }}"
 
 
- 
   # this is necessary to ensure libvirtd doesn't have dnsmasq running
  
   - name: undefine default network
