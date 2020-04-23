@@ -1,0 +1,40 @@
+---
+# this playbook sets up sincgars
+# user must supply:
+#   influxdb_host: hostname where remote writes will go to
+#   influxdb_password: to login with
+# example without continuation character
+# ansible_playbook -vv
+#      -e cloud_name=bene-alias-cloud14-mar-23 
+#      -e influxdb_host=ec2-52-12-63-197.us-west-2.compute.amazonaws.com
+#      -e influxdb_password=youknowit
+#     -i inventory.yml sincgars.yml
+#
+- hosts: deployer
+  remote_user: root
+  gather_subset: network
+  max_fail_percentage: 0
+  any_errors_fatal: true
+  vars:
+    influxdb_username: sincgars
+    influxdb_dbname: prometheusreaddb
+    sincgars_git_repo: https://github.com/aakarshg/sincgars
+  tasks:
+
+  - name: verify that all inputs are supplied
+    shell: "(echo {{ cloud_name }} {{ influxdb_host }}; echo {{ influxdb_password }} > /dev/null)  || echo MISSING INPUT"
+
+  - name: clone sincgars
+    git:
+      dest: sincgars
+      repo: "{{ sincgars_git_repo }}" 
+
+  - name: ensure no existing deployment
+    shell: "oc -n openshift-monitoring delete configmap cluster-monitoring-config && echo old configmap deleted"
+    ignore_errors: yes
+ 
+  - name: set up remote write of prometheus data
+    shell:
+      chdir: sincgars
+      cmd: "python3 deploy.py -c {{ cloud_name }} -u 'http://{{ influxdb_host }}:8086/api/v1/prom/write?db={{ influxdb_dbname }}&u={{ influxdb_username }}&p={{ influxdb_password }}'"
+ 
