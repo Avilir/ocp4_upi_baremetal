@@ -774,6 +774,7 @@
     copy:
       src: "{{ item }}"
       dest: "~/"
+      force: yes
     with_items:
     - "post_install.yml"
     - "~/post_install_inventory.yml"
