@@ -5,11 +5,10 @@ on bare metal machines.   Dustin's document is [at this link](https://docs.googl
 # restrictions (at this time)
 
 1) supports only Alias and Scale Lab
-2) supports only baremetal at this time (no clouds)
-3) public interface is assumed to be slow
-4) qinq-0 network configuration (each interface has separate VLAN)
-5) cluster must start out on RHEL8/Centos8 - RHEL7 not supported
-6) playbooks must run on Linux (Fedora 31, RHEL8 tested)
+2) supports only baremetal at this time (no public clouds)
+3) public interface to outside world is assumed to be slow
+4) cluster must start out on RHEL8/Centos8 - RHEL7 not supported
+5) playbooks must run on Linux (Fedora 31, RHEL8 tested)
 
 # where to run the playbook
 
@@ -18,7 +17,11 @@ You can run it from a host totally outside your cluster, or you can run it from 
 # discovery phase
 
 The first step happens when you get your lab reservation.  At this time, 
-we *require that RHEL8/Centos8 be installed on your deployer, masters and workers* - RHEL7 will not work.  This change can be done with Foreman GUI in Alias, for example.   Go into each host, use "Operating System" tab, fill it out like this:
+we *require that RHEL8/Centos8 be installed on your deployer, masters and workers* - RHEL7 will not work.  This change can be done with Foreman GUI in Alias, for example.   
+
+background: This is necessary so that we can automatically determine the network interface names and mac addresses for your openshift cluster nodes.   In the future I hope to transition to using metadata from the labs [such as this example](http://perf1.perf.lab.eng.bos.redhat.com/pub/bengland/tmp/ocp4/cloud03_ocpinventory.json).
+
+Go into each host, use "Operating System" tab, fill it out like this:
 
 ![Host Edit Dialog](host-edit.png)
 
