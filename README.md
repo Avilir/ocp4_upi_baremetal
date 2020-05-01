@@ -176,8 +176,12 @@ If all goes well, then the CoreOS and ignition files will be pulled onto all of 
 
 For SuperMicros in the scale lab, you need to do the following:
 ```
-for node in `cat supermicro-workers.list`; do ipmitool -U quads -P $password -H $node chassis bootdev pxe; done
-for node in `cat supermicro-workers.list`; do echo $node; ipmitool -U quads -P $password -H $node chassis power reset; done
+for node in `cat all_openshift.list`; do ipmitool -I lanplus -U quads -P "$QUADS_TICKET" -H $node chassis bootdev pxe; done
+for node in `cat masters.list`; do ipmitool -I lanplus -U quads -P "$QUADS_TICKET" -H $node chassis power reset; done
+```
+and later on when the masters have formed a cluster:
+```
+for node in `cat workers.list`; do ipmitool -I lanplus -U quads -P "$QUADS_TICKET" -H $node chassis power reset; done
 ```
 
 # post-installation tasks
