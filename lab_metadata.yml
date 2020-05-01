@@ -29,21 +29,45 @@ lab_metadata:
     - ens7f1
 
   # here is a *subset* of machine types in scale lab
+  # 2 kinds of 1029u machines for example
  
 - name: scale_lab
   machine_types:
-  - machine_type: '1029u'
-    badfish_boot_order: "director_1029u_interfaces: HardDisk.List.1-1,NIC.Slot.2-1"
+  - machine_type: '1029u_trtp'
+    badfish_boot_order:
+    provision_intf: ens1f0
+    baremetal_intf: ens1f1
+    public_intf: eno1
+    disabled_intfs:
+    - eno1
+    - eno2
+    - ens1f1
+    - ens2f1
+    - ens2f0
+
+  - machine_type: '1029u_tn10rt'
+    badfish_boot_order:
+    provision_intf: enp175s0f0
+    baremetal_intf: enp175s0f1
+    public_intf: eno1
+    disabled_intfs:
+    - eno1
+    - eno2
+    - enp175s0f1
+    - ens2f1
+    - ens2f0
+
+  - machine_type: '1029p'
+    badfish_boot_order:
     provision_intf: ens2f0
     baremetal_intf: ens2f1
     public_intf: eno1
     disabled_intfs:
     - eno1
     - eno2
-    - eno3
-    - eno4
-    - ens1f1
-    - ens2f0
+    - ens2f1
+    - ens2f2
+    - ens2f3
 
   - machine_type: 'r620'
     badfish_boot_order: "director_620_interfaces: HardDisk.List.1-1,NIC.Slot.2-3"
