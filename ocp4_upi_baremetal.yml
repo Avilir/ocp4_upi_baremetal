@@ -370,10 +370,9 @@
         insertbefore: BOF
 
     - name: define subnet that we use for time services
-      replace:
+      lineinfile:
         path: "{{ chrony_conf }}"
-        regexp: "^#allow.*"
-        replace: "allow {{ deploy_subnet }}"
+        line: "allow {{ deploy_subnet }}"
 
     - name: enable logging
       replace:
