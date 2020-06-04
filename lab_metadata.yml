@@ -79,3 +79,17 @@ lab_metadata:
     - eno2
     - eno3
 
+  - machine_type: '6048r'
+    badfish_boot_order:
+    provision_intf: enp4s0f0
+    baremetal_intf: enp4s0f1
+    public_intf: eno1
+    disabled_intfs:
+    - eno1
+    - enp131s0f0
+    - enp131s0f1
+    - enp131s0f2
+    - enp131s0f3
+    - enp5s0f0
+    - enp5s0f1
+
