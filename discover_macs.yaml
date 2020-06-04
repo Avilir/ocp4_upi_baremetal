@@ -104,7 +104,6 @@
   vars:
     # this var can be overridden
     new_inv: inventory_with_macs.yml
-    post_install_inv: post_install_inventory.yml
     master_count: "{{ groups['masters'] | length }}"
     worker_count: "{{ groups['workers'] | length }}"
 
@@ -124,22 +123,5 @@
       flat: yes
       src: "{{ new_inv }}"
       dest: "~/"
-
-
-  # post-install inventory file allows playbooks
-  # to access openshift nodes after they have joined the openshift cluster
-  # mac addresses are no longer needed
-
-  - name: generate post-install inventory file
-    template: 
-      src: post_install_inventory.yml.j2
-      dest: "{{ post_install_inv }}"
-
-  - name: fetch post install inventory file to protect from deployer reinstall
-    fetch:
-      flat: yes
-      src: "{{ post_install_inv }}"
-      dest: "~/"
-
 
 

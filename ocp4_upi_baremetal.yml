@@ -769,6 +769,20 @@
     # SOMEDAY: automate badfish commands to install masters
 
 
+  # post-install inventory file allows playbooks
+  # to access openshift nodes after they have joined the openshift cluster
+
+  - name: generate post-install inventory file
+    template: 
+      src: post_install_inventory.yml.j2
+      dest: "{{ post_install_inv }}"
+
+  - name: fetch post install inventory file to protect from deployer reinstall
+    fetch:
+      flat: yes
+      src: "{{ post_install_inv }}"
+      dest: "~/"
+
   - name: copy post-install playbook files to deployer host
     copy:
       src: "{{ item }}"

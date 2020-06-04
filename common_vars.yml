@@ -37,3 +37,5 @@
     deploy_ip_dhcp_min: "{{ deploy_ip_bootstrap }}"
     deploy_ip_dhcp_max: "{{ deploy_ip_1st_3_octets }}.{{ deploy_ip_upper_lim }}"
 
+    post_install_inv: ~/post_install_inventory.yml
+
