@@ -21,7 +21,7 @@ lab_name = argv[3]
 
 with open(metadata_fn, 'r') as metaf:
   # FIXME: unsafe
-  d = yaml.load(metaf)
+  d = yaml.load(metaf, Loader=yaml.SafeLoader)
 
 metadata = d['lab_metadata']
 lab_machine_types = None
@@ -35,7 +35,7 @@ for minfo in lab_machine_types:
   mtype = minfo['machine_type']
   disabled_intfs = minfo['disabled_intfs']
   relpath = ignition_dir + '/' + str(mtype) + '/' + 'etc/sysconfig/network-scripts'
-  os.makedirs(relpath)
+  os.makedirs(relpath, exist_ok=True)
   for i in disabled_intfs:
      with open(os.path.join(relpath, 'ifcfg-%s' % i), 'w') as iff:
        iff.write('DEVICE=%s\nONBOOT=no\nBOOTPROTO=none\n' % i)
