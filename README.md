@@ -135,7 +135,7 @@ To start master and worker installation, from the deployer host use the installe
 
 A new badfish-parallel.sh does all machines simultaneously.   This works really well in a scale-lab-sized deployment for workers, and is highly recommended there.  However, if you want to do it the slow 1-at-a-time way, badfish.sh is still available.
 
-To get ready for openshift deployment, you must set up boot order and enable PXE on all openshift nodes.
+To get ready for openshift deployment, login to the deployer host first.   Now you must set up boot order and enable PXE on all openshift nodes.
 
 ```
 cd
