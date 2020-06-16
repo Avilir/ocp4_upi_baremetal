@@ -116,6 +116,14 @@
     shell: "nmcli conn down $(nmcli conn show | grep {{ item }} | awk '{ print $(NF-2) }')"
     with_items: "{{ intfs_to_disable }}"
     
+  # so reboot won't bring them back online ...
+  # note: some of them may not be online so errors can be seen here
+
+  - name: disable these interfaces using NetworkManager
+    shell: "nmcli device disconnect {{ item }}"
+    ignore_errors: yes
+    with_items: "{{ intfs_to_disable }}"
+    
 
   # install RPMS
  
@@ -173,6 +181,12 @@
         - name: ensure changes committed
           shell: sync
 
+        - name: use permissive mode for SELINUX on deployer host
+          replace:
+            path: "/etc/selinux/config"
+            regexp: "SELINUX=enforcing"
+            replace: "SELINUX=permissive"
+
         - name: reboot
           reboot: 
             post_reboot_delay: 10
@@ -180,6 +194,10 @@
 
     when: packages_installed.rc != ok
 
+
+  - name: put SELINUX in permissive mode
+    shell: "setenforce 0"
+    ignore_errors: true
 
   - name: see if vnc running
     pids:
@@ -205,8 +223,11 @@
         path: ~/.vnc/passwd
         mode: 0600
 
-    - name: start vncserver
-      shell: "vncserver :1"
+    - name: ensure vncserver stays started
+      systemd:
+          enabled: yes
+          name: vncserver@:1
+          state: started
 
 
   # set up TFTP boot config
