@@ -131,25 +131,26 @@ This playbook can be used whenever a re-install of the deployer host is needed, 
 
 Dustin's document describes what the playbook should be doing.  This will take a long while, and may involve the reboot of the deployer host and download of RHCOS and openshift.   When it finishes, you will have a deployer host that is set up to install masters and workers.   We do not actually install the masters and workers in this playbook.   
 
-To start master and worker installation, from the deployer host use the installed **badfish.sh** for Dell machines.  It applies commands to a list of hosts in a file.  At present, it does not support SuperMicro machines, but should work with most Dell machines (that have Redfish API).    See Dustin's notes about supermicro alternative procedures.   **badfish.sh** depends on the **QUADS_TICKET** environment variable defined in **~/.bashrc**  .
+To get ready for openshift deployment, login to the deployer host first.
+To start master and worker installation, from the deployer host use ~/badfish/src/badfish.py for Dell machines.  It applies commands to a list of hosts in a file.  At present, it does not support SuperMicro machines, but should work with most Dell machines (that have Redfish API).    See Dustin's notes about supermicro alternative procedures. 
 
-A new badfish-parallel.sh does all machines simultaneously.   This works really well in a scale-lab-sized deployment for workers, and is highly recommended there.  However, if you want to do it the slow 1-at-a-time way, badfish.sh is still available.
-
-To get ready for openshift deployment, login to the deployer host first.   Now you must set up boot order and enable PXE on all openshift nodes.
+Now you must set up boot order and enable PXE on all openshift nodes.
 
 ```
 cd
 source ~/.bashrc
-badfish-parallel.sh all_openshift.list -t director
-badfish-parallel.sh all_openshift.list --check-boot
-<keep doing this until you see "Current boot order is set to: director">
-badfish-parallel.sh all_openshift.list --pxe
+cd badfish
+badfish="src/badfish/badfish.py -u quads -p $QUADS_TICKET -i config/idrac_interfaces.yml"
+$badfish --host-list ~/all_openshift.list -t director
+<wait until hosts are done rebooting, this may take minutes>
+$badfish --host-list ~/all_openshift.list --check-boot
+$badfish --host-list ~/all_openshift.list --pxe
 ```
 
 First we must bring up the masters and establish an openshift cluster:
 
 ```
-badfish-parallel.sh masters.list --power-cycle
+$badfish --host-list masters.list --power-cycle
 ```
 
 To monitor installation from OpenShift perspective, use this command sequence:
@@ -169,7 +170,7 @@ Now we can start installing the workers - this can slightly overlap the masters,
 does not involve openshift at all, just CoreOS install.  
 
 ```
-badfish-parallel.sh workers.list --power-cycle
+$badfish --host-list workers.list --power-cycle
 ```
 
 If all goes well, then the CoreOS and ignition files will be pulled onto all of these machines and they should reboot and join the OpenShift cluster.  
@@ -227,8 +228,9 @@ vncviewer e26-h01-740xd.alias.bos.scalelab.redhat.com:1
 When you are done with the cluster, or if you want to re-install from scratch, use the next command to revert the boot order to the original state that the QUADS labs and Foreman expect.   
 
 ```
-badfish-parallel.sh all_openshift.list -t foreman
-badfish-parallel.sh all_openshift.list --check-boot
+$badfish --host-list all_openshift.list -t foreman
+<wait until hosts done rebooting>
+$badfish --host-list all_openshift.list --check-boot
 ```
 
 Keep checking boot order every 5 min until you see "Current boot order is set to: foreman"
