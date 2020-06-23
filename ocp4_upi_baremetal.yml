@@ -223,6 +223,12 @@
         path: ~/.vnc/passwd
         mode: 0600
 
+    - name: change user to root in unit file
+      replace:
+        path: /usr/lib/systemd/system/vncserver@.service
+        regexp: "<USER>"
+        replace: "root"
+
     - name: ensure vncserver stays started
       systemd:
           enabled: yes
