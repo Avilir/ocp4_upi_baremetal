@@ -722,15 +722,6 @@
     when: badfish_ready.rc != ok
     block:
 
-    - name: install badfish.sh and badfish-par-for-all.sh
-      copy: 
-        src: "{{ item }}"
-        dest: "/usr/local/bin/"
-        mode: go+rx
-      with_items:
-      - badfish.sh
-      - badfish-parallel.sh
-
     - name: install QUADS_TICKET environment variable
       lineinfile:
         path: .bashrc
