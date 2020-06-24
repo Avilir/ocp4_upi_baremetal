@@ -132,7 +132,7 @@ This playbook can be used whenever a re-install of the deployer host is needed, 
 Dustin's document describes what the playbook should be doing.  This will take a long while, and may involve the reboot of the deployer host and download of RHCOS and openshift.   When it finishes, you will have a deployer host that is set up to install masters and workers.   We do not actually install the masters and workers in this playbook.   
 
 To get ready for openshift deployment, login to the deployer host first.
-To start master and worker installation, from the deployer host use ~/badfish/src/badfish.py for Dell machines.  It applies commands to a list of hosts in a file.  At present, it does not support SuperMicro machines, but should work with most Dell machines (that have Redfish API).    See Dustin's notes about supermicro alternative procedures. 
+To start master and worker installation, from the deployer host use [badfish.py](https://github.com/redhat-performance/badfish/blob/master/src/badfish/badfish.py) for Dell machines.  It applies commands to a list of hosts in a file.  At present, it does not support SuperMicro machines, but should work with most Dell machines (that have Redfish API).    See Dustin's notes about supermicro alternative procedures. 
 
 Now you must set up boot order and enable PXE on all openshift nodes.
 
