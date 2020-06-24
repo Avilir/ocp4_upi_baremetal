@@ -689,12 +689,14 @@
       shell:
         chdir: openshift
         cmd: "wget -nv {{ openshift_release_url }}/{{ item }}"
-      with_items: "{{ openshift_tarballs.stdout_lines }}"
+      with_items: 
+      - openshift-client-linux
+      - openshift-install-linux
 
     - name: unzip each tarball so it is in PATH
       shell:
         chdir: "/usr/local/bin"
-        cmd: "tar zxvf ~/openshift/{{ item }}*tar.gz"
+        cmd: "tar zxvf ~/openshift/{{ item }}tar.gz"
       with_items: 
       - openshift-client-linux
       - openshift-install-linux
