@@ -668,23 +668,6 @@
         path: openshift
         state: directory
       
-    - name: pull the index of the directory
-      shell: 
-        cmd: "wget {{ openshift_release_url }}"
-        chdir: openshift
-
-    - name: install program to parse contents of web URL
-      copy:
-        src: parse_web_dir.py
-        dest: "/usr/local/bin"
-        mode: go+rx
-
-    - name: extract URLs for the tarballs we need in the directory
-      shell:
-        chdir: openshift
-        cmd: "parse_web_dir.py index.html openshift install-linux,client-linux"
-      register: openshift_tarballs
-
     - name: pull each tarball
       shell:
         chdir: openshift
