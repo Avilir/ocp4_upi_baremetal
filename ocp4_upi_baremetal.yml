@@ -639,7 +639,7 @@
     - dnsmasq
 
   - name: wait a few sec...
-    shell: "sleep 2"
+    shell: "sleep 3"
 
   - name: start up libvirtd
     systemd:
@@ -694,7 +694,7 @@
     - name: unzip each tarball so it is in PATH
       shell:
         chdir: "/usr/local/bin"
-        cmd: "tar zxvf ~/openshift/{{ item }}*tar.gz"
+        cmd: "tar zxvf ~/openshift/{{ item }}.tar.gz"
       with_items: 
       - openshift-client-linux
       - openshift-install-linux
