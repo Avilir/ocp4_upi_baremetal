@@ -132,20 +132,28 @@ This playbook can be used whenever a re-install of the deployer host is needed, 
 Dustin's document describes what the playbook should be doing.  This will take a long while, and may involve the reboot of the deployer host and download of RHCOS and openshift.   When it finishes, you will have a deployer host that is set up to install masters and workers.   We do not actually install the masters and workers in this playbook.   
 
 To get ready for openshift deployment, login to the deployer host first.
-To start master and worker installation, from the deployer host use [badfish.py](https://github.com/redhat-performance/badfish/blob/master/src/badfish/badfish.py) for Dell machines.  It applies commands to a list of hosts in a file.  At present, it does not support SuperMicro machines, but should work with most Dell machines (that have Redfish API).    See Dustin's notes about supermicro alternative procedures. 
+
+## Dell machines
+
+To start master and worker installation, from the deployer host use [badfish.py](https://github.com/redhat-performance/badfish/blob/master/src/badfish/badfish.py) for Dell machines.  It applies commands to a list of hosts in a file.  At present, it does not support SuperMicro machines, but should work with most Dell machines (that have Redfish API).    
 
 Now you must set up boot order and enable PXE on all openshift nodes.
 
 ```
 cd
+git clone https://github.com/redhat-performance/badfish
 source ~/.bashrc
 cd badfish
-badfish="$PWD/src/badfish/badfish.py -u quads -p $QUADS_TICKET -i config/idrac_interfaces.yml"
+badfish="$PWD/src/badfish/badfish.py -u quads -p $QUADS_TICKET -i $HOME/badfish/config/idrac_interfaces.yml"
 $badfish --host-list ~/all_openshift.list -t director
 <wait until hosts are done rebooting, this may take minutes>
 $badfish --host-list ~/all_openshift.list --check-boot
 $badfish --host-list ~/all_openshift.list --pxe
 ```
+
+**Note: to be a good lab citizen, you must reset the machines from "-t director" to "-t foreman" mode 
+This is one of the deficiencies of this procedure - ideally it should not allow a machine to
+PXE boot more than once.**
 
 First we must bring up the masters and establish an openshift cluster:
 
@@ -174,6 +182,8 @@ $badfish --host-list ~/workers.list --power-cycle
 ```
 
 If all goes well, then the CoreOS and ignition files will be pulled onto all of these machines and they should reboot and join the OpenShift cluster.  
+
+## SuperMicro machines
 
 For SuperMicros in the scale lab, you need to do the following:
 ```
