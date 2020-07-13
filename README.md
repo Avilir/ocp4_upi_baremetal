@@ -140,15 +140,11 @@ To start master and worker installation, from the deployer host use [badfish.py]
 Now you must set up boot order and enable PXE on all openshift nodes.
 
 ```
-cd
-git clone https://github.com/redhat-performance/badfish
-source ~/.bashrc
-cd badfish
-badfish="$PWD/src/badfish/badfish.py -u quads -p $QUADS_TICKET -i $HOME/badfish/config/idrac_interfaces.yml"
-$badfish --host-list ~/all_openshift.list -t director
+alias badfish
+badfish --host-list ~/all_openshift.list -t director
 <wait until hosts are done rebooting, this may take minutes>
-$badfish --host-list ~/all_openshift.list --check-boot
-$badfish --host-list ~/all_openshift.list --pxe
+badfish --host-list ~/all_openshift.list --check-boot
+badfish --host-list ~/all_openshift.list --pxe
 ```
 
 **Note: to be a good lab citizen, you must reset the machines from "-t director" to "-t foreman" mode 
@@ -158,7 +154,7 @@ PXE boot more than once.**
 First we must bring up the masters and establish an openshift cluster:
 
 ```
-$badfish --host-list ~/masters.list --power-cycle
+badfish --host-list ~/masters.list --power-cycle
 ```
 
 To monitor installation from OpenShift perspective, use this command sequence:
@@ -178,7 +174,7 @@ Now we can start installing the workers - this can slightly overlap the masters,
 does not involve openshift at all, just CoreOS install.  
 
 ```
-$badfish --host-list ~/workers.list --power-cycle
+badfish --host-list ~/workers.list --power-cycle
 ```
 
 If all goes well, then the CoreOS and ignition files will be pulled onto all of these machines and they should reboot and join the OpenShift cluster.  
@@ -238,9 +234,9 @@ vncviewer e26-h01-740xd.alias.bos.scalelab.redhat.com:1
 When you are done with the cluster, or if you want to re-install from scratch, use the next command to revert the boot order to the original state that the QUADS labs and Foreman expect.   
 
 ```
-$badfish --host-list all_openshift.list -t foreman
+badfish --host-list all_openshift.list -t foreman
 <wait until hosts done rebooting>
-$badfish --host-list all_openshift.list --check-boot
+badfish --host-list all_openshift.list --check-boot
 ```
 
 Keep checking boot order every 5 min until you see "Current boot order is set to: foreman"
