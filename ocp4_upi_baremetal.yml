@@ -612,6 +612,12 @@
         regexp: "(^search)(.*)"
         replace: '\1 {{ ocp4_dns_domain_name }}\2'
 
+    - name: remove deployer DNSmasq server from resolv.conf
+      lineinfile:
+        path: "{{ resolv_conf }}"
+        line: "nameserver {{ deployer_ip }}"
+        state: absent
+      
     - name: add DNS server IP addr to resolv.conf
       lineinfile:
         path: "{{ resolv_conf }}"
