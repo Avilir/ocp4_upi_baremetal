@@ -17,5 +17,30 @@
   - name: install public key in target account .ssh/authorized_keys
     raw: "echo {{ ssh_public_key.stdout_lines[0] }} > {{ ssh_auth_keys }}"
 
+- hosts: all
+  gather_facts: no
+  remote_user: root
+  vars_prompt:
+    # username can be exposed
+    - name: rh_username
+      prompt: "what is your red hat username?"
+      private: no
+
+    # password cannot be exposed
+    - name: rh_pw
+      prompt: "what is your red hat password?"
+
+  tasks:
+
+  # this task can fail if the subscription has already been done
+  #
+  - name: use subscription-manager register
+    raw: "subscription-manager register --username={{ rh_username }} --password={{ rh_pw }}"
+    no_log: True
+    ignore_errors: True
+
+  - name: auto-attach RHEL repos
+    raw: "subscription-manager attach --auto"
+
   - name: install python so rest of ansible works!
     raw: "dnf install -y python3 && ln -sfv /usr/bin/python3 /usr/bin/python"
