@@ -10,5 +10,6 @@ e26-h03-740xd.alias.bos.scalelab.redhat.com machine_type=740xd
 e26-h05-740xd.alias.bos.scalelab.redhat.com machine_type=740xd
 e26-h07-740xd.alias.bos.scalelab.redhat.com machine_type=740xd
 
+# note that this group must be present even if no hosts in it
 [workers]
 
