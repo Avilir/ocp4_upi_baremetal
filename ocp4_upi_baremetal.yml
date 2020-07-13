@@ -677,7 +677,7 @@
     - name: pull each tarball
       shell:
         chdir: openshift
-        cmd: "wget -nv {{ openshift_release_url }}/{{ item }}"
+        cmd: "wget -nv {{ openshift_release_url }}/{{ item }}.tar.gz"
       with_items: 
       - openshift-client-linux
       - openshift-install-linux
@@ -685,7 +685,7 @@
     - name: unzip each tarball so it is in PATH
       shell:
         chdir: "/usr/local/bin"
-        cmd: "tar zxvf ~/openshift/{{ item }}tar.gz"
+        cmd: "tar zxvf ~/openshift/{{ item }}.tar.gz"
       with_items: 
       - openshift-client-linux
       - openshift-install-linux
@@ -724,6 +724,17 @@
         dest: badfish
         repo: https://github.com/redhat-performance/badfish
         force: yes
+
+    - name: install python packages needed by badfish
+      shell:
+        chdir: ~/badfish
+        cmd: "pip3 install -r requirements.txt"
+
+    - name: install alias for badfish to make it easier
+      lineinfile:
+        path: .bashrc
+        state: present
+        line: "alias badfish="$HOME/badfish/src/badfish/badfish.py -u quads -p $QUADS_TICKET -i $HOME/badfish/config/idrac_interfaces.yml"
 
     - name: remove director records from idrac_interfaces.yml
       lineinfile: 
