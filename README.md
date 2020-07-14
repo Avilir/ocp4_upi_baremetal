@@ -50,7 +50,6 @@ so that password-less ssh is possible (ansible depends on this).
 
 * You may need to create a public-private key pair if you haven't already done this, with ssh-keygen.  
 * If necessary, clear out ~/.ssh/known_hosts entries for previous incarnations of these hosts.  
-* This playbook will get your public key installed on all the machines that you'll be using:
 
 Construct an input inventory file to define 3 host groups:
 
