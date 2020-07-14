@@ -622,7 +622,7 @@
       lineinfile:
         path: "{{ resolv_conf }}"
         line: "nameserver {{ deployer_ip }}"
-        insertbefore: "^nameserver.*"
+        insertbefore: "^nameserver "
         state: present
 
   - name: flush iptables
@@ -734,7 +734,7 @@
       lineinfile:
         path: .bashrc
         state: present
-        line: "alias badfish="$HOME/badfish/src/badfish/badfish.py -u quads -p $QUADS_TICKET -i $HOME/badfish/config/idrac_interfaces.yml"
+        line: 'alias badfish="$HOME/badfish/src/badfish/badfish.py -u quads -p $QUADS_TICKET -i $HOME/badfish/config/idrac_interfaces.yml"'
 
     - name: remove director records from idrac_interfaces.yml
       lineinfile: 
