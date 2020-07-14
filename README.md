@@ -84,14 +84,15 @@ in **lab_metadata.yml**.   This metadata file defines properties of each machine
 This allows you to avoid defining the variables needed by the
 playbook for each machine or machine type.   
 
-Now run the playbook to install public key (and python if necessary):
+Now run the first playbook to install public key, register nodes with subscription manager and install python3 in such a way that ansible modules can function correctly.  At present this playbook allows use of subscription-manager to get most up-to-date RHEL8 repos.   You have to enter a subscription manager username and password, once, with the password not echoed and not logged.
+
 
 ```
 ansible-playbook --ssh-common-args '-o StrictHostKeyChecking=no' \
   -i inventory.yml -e ansible_ssh_pass=TakeAWildGuess install_public_key.yml 
 ```
 
-You run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   
+You then run the discover_macs.yml playbook one time, to generate an inventory file with mac addresses defined for all machines.   
 
 ```
 ansible-playbook -vv -i inventory.yml discover_macs.yaml
@@ -109,17 +110,6 @@ cd ..
 ```
 
 # deployment phase
-
-At present the playbook allows use of subscription-manager to get most up-to-date RHEL8 repos.   However, this is not automated, for security reasons.   The subscription-manager password is your Kerberos password and we don't want that showing up on all the lab systems, which are not secure.    So you have to manually login and turn on subscription manager if you want it.   You need to do just one command on the deployer:
-
-```
-subscription-manager register
-Username:your-account@redhat.com
-Password:your-password
-```
-Or you can provide repo files that point to an internal site like this one:
-
-http://download.lab.bos.redhat.com/released/RHEL-8/8.1.0/
 
 Now you prepare your deployer host with:
 
