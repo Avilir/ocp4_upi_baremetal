@@ -15,7 +15,7 @@
     register: ssh_public_key
 
   - name: install public key in target account .ssh/authorized_keys
-    raw: "echo {{ ssh_public_key.stdout_lines[0] }} > {{ ssh_auth_keys }}"
+    raw: "echo {{ ssh_public_key.stdout_lines[0] }} >> {{ ssh_auth_keys }}"
 
 - hosts: all
   gather_facts: no
