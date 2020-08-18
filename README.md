@@ -203,19 +203,18 @@ You may have to run this more than once if not all workers have reached the righ
 submitted to the OpenShift Cluster.    That's ok, the procedure is idempotent so it can be run as many times as
 necessary.
 
-To access the openshift console, you will need vncviewer installed on your laptop.  A vncserver has already been started on the host.  You may need to use this /root/.vnc/xstartup file:
+To access the openshift console from your laptop:
+
+``` 
+# ssh -N -D 9090 kni@e24-h19-740xd -f
+# /usr/bin/google-chrome --user-data-dir="$HOME/proxy-profile" \
+    --proxy-server="socks5://localhost:9090"
+```
+
+This brings up a browser window that will be able to use the DNS server on the deployer host, and you can now enter the usual URL, such as:
 
 ```
-#!/bin/sh
-unset SESSION_MANAGER
-gnome-session --session=gnome-classic
-```
-
-Then on your laptop:
-
-```
-sudo dnf install -y tigervnc
-vncviewer e26-h01-740xd.alias.bos.scalelab.redhat.com:1
+https://console-openshift-console.apps.test.myocp4.com
 ```
 
 # resetting machines to initial state
