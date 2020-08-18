@@ -1,17 +1,23 @@
 ---
 # this playbook sets up sincgars
 # user must supply:
+#   username on deployment host to gain access to openshift oc command
 #   influxdb_host: hostname where remote writes will go to
 #   influxdb_password: to login with
+#   cloud name to distinguish your cluster from others
 # example without continuation character
 # ansible_playbook -vv
+#      -u kni
 #      -e cloud_name=bene-alias-cloud14-mar-23 
 #      -e influxdb_host=ec2-52-12-63-197.us-west-2.compute.amazonaws.com
 #      -e influxdb_password=youknowit
 #     -i inventory.yml sincgars.yml
 #
+# in this case inventory.yml need only contain:
+# [deployer]
+# your-provisioner-host
+#
 - hosts: deployer
-  remote_user: root
   gather_subset: network
   max_fail_percentage: 0
   any_errors_fatal: true
