@@ -645,7 +645,7 @@
     - dnsmasq
 
   - name: wait a few sec...
-    shell: "sleep 2"
+    shell: "sleep 3"
 
   - name: start up libvirtd
     systemd:
