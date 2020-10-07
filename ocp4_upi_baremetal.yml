@@ -199,42 +199,6 @@
     shell: "setenforce 0"
     ignore_errors: true
 
-  - name: see if vnc running
-    pids:
-      name: Xvnc
-    register: vnc_pids
-
-  - name: show vnc_pids length
-    local_action: command echo "{{ vnc_pids.pids | length }}"
-
-  - name: setup VNC
-    when: (vnc_pids.pids | length) == 0
-    block:
-    - name: create vnc directory
-      file:
-        path: .vnc
-        state: directory
-
-    - name: set vnc passwd
-      shell: "echo {{ vncpasswd }} | vncpasswd -f > ~/.vnc/passwd"
-
-    - name: make it only readable by root
-      file:
-        path: ~/.vnc/passwd
-        mode: 0600
-
-    - name: change user to root in unit file
-      replace:
-        path: /usr/lib/systemd/system/vncserver@.service
-        regexp: "<USER>"
-        replace: "root"
-
-    - name: ensure vncserver stays started
-      systemd:
-          enabled: yes
-          name: vncserver@:1
-          state: started
-
 
   # set up TFTP boot config
 
