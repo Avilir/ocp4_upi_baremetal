@@ -1,3 +1,7 @@
+** THIS REPO IS NOW OBSOLETE AND NO LONGER MAINTAINED**
+
+Why: Sai Malleni's JetSki now can do the things that this repo used to do, and does it better and more in line with future direction of openshift-install (IPI).
+
 This repo contains 2 ansible playbooks for implementing Dustin Black's method for doing OpenShift 4 UPI installation 
 on bare metal machines.   Dustin's document is [at this link](https://docs.google.com/document/d/1hl2qVWyRjqhKT3ZR5Q2xn9Ip1DLShanxQcnp11Zf1tw/edit?ts=5e5462d2#heading=h.f51z993ev25
 ).   For a link to openshift-install support for bare metal machines, [see this documentation](https://github.com/openshift/installer/blob/master/docs/user/metal/install_upi.md).
